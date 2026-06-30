@@ -1,0 +1,33 @@
+{
+  "title": "What is video as code?",
+  "format": "explainer",
+  "aspect": "16:9",
+  "resolution": "1080p",
+  "voice_id": "REPLACE_WITH_YOUR_ELEVENLABS_VOICE_ID",
+  "music_prompt": "calm minimal modern tech underscore, no vocals, loopable",
+  "beats": [
+    {
+      "say": "Recording and editing is the bottleneck. Not ideas.",
+      "show": { "type": "text", "lines": ["VIDEO AS", "CODE"] }
+    },
+    {
+      "say": "So I stopped recording. The script became the whole video.",
+      "cue": "the script",
+      "show": { "type": "terminal", "path": "assets/scenes-json.png" }
+    },
+    {
+      "say": "Each line of narration gets one visual, cut to the exact word.",
+      "cue": "one visual",
+      "show": { "type": "diagram", "path": "assets/beat-model.png" }
+    },
+    {
+      "say": "An AI voice reads it, free tools assemble it, and a finished video falls out.",
+      "cue": "finished video",
+      "show": { "type": "capture", "path": "assets/pipeline.png" }
+    },
+    {
+      "say": "No camera. No editor. Just a script you can change like code.",
+      "show": { "type": "text", "lines": ["NO CAMERA.", "NO EDITOR."] }
+    }
+  ]
+}

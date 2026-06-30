@@ -1,0 +1,15 @@
+{
+  "name": "ghostreel",
+  "version": "0.1.0",
+  "description": "Make studio-quality video with AI. No camera. No editor. No face. A reference 'video as code' pipeline.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "postinstall": "playwright install chromium",
+    "rough": "./ghostreel.sh --rough examples/intake.example.json",
+    "build": "./ghostreel.sh examples/intake.example.json"
+  },
+  "dependencies": {
+    "playwright": "^1.47.0"
+  }
+}

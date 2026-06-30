@@ -1,0 +1,78 @@
+/* kinetic.css — ghostreel's original kinetic-typography engine (MIT).
+   Clean-room. Not derived from any proprietary deck/ad kit.
+   A "stage" holds stacked .scene layers; a timeline (kinetic.js) shows/hides them
+   and staggers [data-k] text in. Fonts are bundled OFL (Anton, Bebas Neue) and use
+   font-display:block so the recorder never captures a blank frame 0. */
+
+@font-face{
+  font-family:'Anton';
+  src:url('fonts/Anton-Regular.ttf') format('truetype');
+  font-weight:400; font-display:block;
+}
+@font-face{
+  font-family:'Bebas Neue';
+  src:url('fonts/BebasNeue-Regular.ttf') format('truetype');
+  font-weight:400; font-display:block;
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#05060c}
+
+#stage{
+  position:relative;width:1080px;height:1920px;overflow:hidden;
+  background:radial-gradient(120% 80% at 50% 16%,#16224e 0%,#0a1230 45%,#05070f 100%);
+}
+#fx{position:absolute;inset:0;z-index:6;pointer-events:none}
+
+/* ---- scenes: stacked, faded in/out by the timeline ---- */
+.scene{
+  position:absolute;inset:0;z-index:2;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:18px;padding:0 90px;text-align:center;
+  opacity:0;transition:opacity .34s ease;
+}
+.scene.on{opacity:1}
+.scene.image{background-size:cover;background-position:center;padding:0}
+.scrim{position:absolute;inset:0;background:linear-gradient(180deg,
+  rgba(0,0,0,.34) 0%,rgba(0,0,0,0) 28%,rgba(0,0,0,0) 56%,rgba(0,0,0,.82) 100%)}
+
+/* ---- kinetic text lines ---- */
+.line{
+  font-family:'Anton',sans-serif;color:#fff;text-transform:uppercase;
+  letter-spacing:.01em;line-height:.96;
+  opacity:0;transform:translateY(46px) scale(.92);
+  transition:opacity .5s cubic-bezier(.2,1.5,.3,1),transform .5s cubic-bezier(.2,1.5,.3,1);
+}
+.line.in{opacity:1;transform:none}
+.line.huge{font-size:172px}
+.line.big{font-size:118px}
+.line.mid{font-size:84px}
+.line.sm{font-size:54px;font-family:'Bebas Neue',sans-serif;letter-spacing:.06em}
+.gold{color:#ffd23f}.cyan{color:#37e3ff}.green{color:#4ade80}.cream{color:#f3eede}.white{color:#fff}
+.strike{text-decoration:line-through;opacity:.55}
+.glow{text-shadow:0 0 38px rgba(255,255,255,.18),0 6px 30px rgba(0,0,0,.5)}
+.gold.glow{text-shadow:0 0 44px rgba(255,210,63,.45),0 6px 30px rgba(0,0,0,.5)}
+.cyan.glow{text-shadow:0 0 44px rgba(55,227,255,.45),0 6px 30px rgba(0,0,0,.5)}
+
+/* ---- top tag (for image scenes) ---- */
+.tag{position:absolute;top:160px;left:0;right:0;text-align:center;z-index:4}
+.tag .line{display:inline-block}
+
+/* ---- animated price / label badge ---- */
+.badge{
+  position:absolute;bottom:440px;left:0;right:0;text-align:center;z-index:5;
+  opacity:0;transform:translateY(40px) scale(.7);
+}
+.badge.in{animation:badgepop .55s cubic-bezier(.2,1.6,.3,1) forwards}
+@keyframes badgepop{to{opacity:1;transform:none}}
+.badge .pill{
+  display:inline-block;padding:14px 46px;border-radius:26px;
+  background:linear-gradient(#3aa06a,#1e6b44);border:5px solid #bff7d8;
+  box-shadow:0 12px 44px rgba(0,0,0,.6);
+}
+.badge .label{font-family:'Anton',sans-serif;color:#fff;font-size:46px;letter-spacing:.02em;text-transform:uppercase}
+.badge .price{font-family:'Anton',sans-serif;color:#bff7d8;font-size:118px;line-height:1}
+
+/* ---- corner brand bug (optional, set by build) ---- */
+.bug{position:absolute;left:48px;bottom:300px;z-index:5;opacity:.85;
+  font-family:'Bebas Neue',sans-serif;letter-spacing:.18em;color:#cfe;font-size:34px}

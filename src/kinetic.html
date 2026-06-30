@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!--
+  kinetic.html — a tiny, self-contained kinetic title card.
+  This is the PATTERN for type-on-screen visuals: real HTML, recorded to mp4 by
+  record_html.mjs. Never an AI image for text. Original/MIT — adapt freely.
+
+  It exposes window.__start() so the recorder can begin the animation on a painted frame.
+  Pass words via the URL hash:  kinetic.html#NO%20CAMERA|NO%20EDITOR
+-->
+<style>
+  :root { --bg:#0a0a0f; --fg:#ededf2; --accent:#22d3ee; }
+  * { margin:0; box-sizing:border-box; }
+  html,body { height:100%; background:var(--bg); overflow:hidden;
+              font-family: system-ui, "Segoe UI", Roboto, sans-serif; }
+  #stage { height:100%; display:flex; flex-direction:column;
+           align-items:center; justify-content:center; gap:0.1em; }
+  .line { color:var(--fg); font-weight:800; font-size:9vw; line-height:1.02;
+          letter-spacing:-0.02em; opacity:0; transform:translateY(40px);
+          transition:opacity .5s cubic-bezier(.22,1,.36,1),
+                     transform .5s cubic-bezier(.22,1,.36,1); }
+  .line.in { opacity:1; transform:none; }
+  .line:last-child { color:var(--accent); }
+  /* a single soft accent glow, not a flat rainbow gradient */
+  #stage::before { content:""; position:fixed; inset:0; z-index:-1;
+    background:radial-gradient(60vw 40vh at 20% 0%, rgba(34,211,238,.10), transparent 60%); }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script>
+  const words = decodeURIComponent(location.hash.slice(1) || "VIDEO AS|CODE").split("|");
+  const stage = document.getElementById("stage");
+  words.forEach(w => {
+    const el = document.createElement("div");
+    el.className = "line";
+    el.textContent = w;
+    stage.appendChild(el);
+  });
+  // The recorder calls this on a painted frame so frame 0 is never blank.
+  window.__start = () => {
+    [...stage.children].forEach((el, i) => setTimeout(() => el.classList.add("in"), 150 + i * 220));
+  };
+  // Also auto-start if opened directly in a browser.
+  window.addEventListener("load", () => setTimeout(() => window.__start(), 400));
+</script>
+</body>
+</html>

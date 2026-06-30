@@ -1,0 +1,26 @@
+# secrets — never commit
+.env
+.envrc
+*.key
+*_token*
+
+# generated output
+out/
+*.mp4
+*.mp3
+*.wav
+*.webm
+*.srt
+
+# deps
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# os / editor
+.DS_Store
+*.swp
+.idea/
+.vscode/

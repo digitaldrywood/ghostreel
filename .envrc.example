@@ -1,0 +1,19 @@
+# ghostreel keys — direnv template.
+#   cp .envrc.example .envrc   (then fill in your keys)   then:  direnv allow
+# .envrc is gitignored, so your real keys are never committed.
+# Not using direnv? Run:  set -a; source .envrc; set +a   (ghostreel.sh also sources it.)
+
+# ElevenLabs — the voice (the only real cost). https://elevenlabs.io
+export ELEVENLABS_API_KEY=
+# Your cloned/chosen voice id (or set voice_id in the intake/scenes file)
+export ELEVENLABS_VOICE_ID=
+
+# OpenAI — gpt-image for B-roll art (billed per image, pennies). https://platform.openai.com
+export OPENAI_API_KEY=
+
+# Google Gemini — Lyria music + image fallbacks (billed per use). https://ai.google.dev
+export GEMINI_API_KEY=
+
+# Optional: free local rough-cut voice (Piper). pip install piper-tts, then point here.
+# export PIPER_BIN=piper
+# export PIPER_VOICE=/path/to/en_US-amy-medium.onnx

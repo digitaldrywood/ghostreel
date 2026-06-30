@@ -1,0 +1,46 @@
+{
+  "title": "Neon Night Market",
+  "theme": "a neon-lit night market food festival",
+  "voice_id": "",
+  "voice_label": "your ElevenLabs voice",
+  "music_prompt": "bright upbeat synthwave, festival energy, 110 bpm, no vocals",
+  "style": {
+    "bg": "radial-gradient(120% 80% at 50% 14%,#3a1d5e 0%,#15123a 48%,#06060f 100%)",
+    "fxcolors": ["#ff5ed1", "#37e3ff", "#ffe14d", "#7bff9e"]
+  },
+  "beats": [
+    {
+      "say": "Tonight only. The Neon Night Market is back.",
+      "show": { "type": "text", "lines": [
+        { "t": "TONIGHT", "cls": "huge cyan glow" },
+        { "t": "ONLY", "cls": "huge gold glow" }
+      ]}
+    },
+    {
+      "say": "Glowing stalls, sizzling griddles, and the best street food in town.",
+      "show": { "type": "image", "prompt": "a vibrant neon-lit night market food festival, glowing stalls, steam rising, people walking, cinematic, vertical", "style": "photoreal", "tag": "STREET EATS" }
+    },
+    {
+      "say": "Start with the loaded tacos. Six bucks, piled high.",
+      "show": { "type": "image", "prompt": "close-up of loaded street tacos on a paper tray under warm neon light, mouthwatering, vertical", "style": "photoreal", "badge": { "label": "LOADED TACOS", "price": "$6" } }
+    },
+    {
+      "say": "Live music all night, right by the water.",
+      "show": { "type": "text", "lines": [
+        { "t": "LIVE MUSIC", "cls": "big green glow" },
+        { "t": "TILL MIDNIGHT", "cls": "huge gold glow" }
+      ]}
+    },
+    {
+      "say": "Save room for warm churros, four dollars a basket.",
+      "show": { "type": "image", "prompt": "a basket of warm cinnamon churros with chocolate dip, neon bokeh background, vertical", "style": "photoreal", "badge": { "label": "CHURROS", "price": "$4" } }
+    },
+    {
+      "say": "Come hungry. We're down at Riverfront Park.",
+      "show": { "type": "text", "lines": [
+        { "t": "COME HUNGRY", "cls": "big cream glow" },
+        { "t": "RIVERFRONT PARK", "cls": "huge cyan glow" }
+      ]}
+    }
+  ]
+}
