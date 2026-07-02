@@ -2,7 +2,7 @@
 # ghostreel.sh — theme/intake -> finished vertical short + cost receipt.
 # Self-contained: needs only this repo + your API keys + ffmpeg + node(playwright) + python3.
 #
-#   ./ghostreel.sh --rough intake.json   # FREE preview (local Piper voice, placeholder cards)
+#   ./ghostreel.sh --rough intake.json   # FREE preview (local Kokoro voice, placeholder cards)
 #   ./ghostreel.sh intake.json           # paid final (real voice + AI images + music)
 #
 # Keys come from the environment. Use direnv: `cp .envrc.example .envrc`, fill it, `direnv allow`.
@@ -35,8 +35,8 @@ echo "== ghostreel: $SLUG  (rough=$ROUGH) =="
 
 # 1) voiceover  --------------------------------------------------------------
 if [ "$ROUGH" = 1 ]; then
-  echo "== 1/6 voice: FREE local Piper rough cut =="
-  VO="$(python3 src/tts_piper.py "$INTAKE" "$RUN")"
+  echo "== 1/6 voice: FREE local rough cut (Kokoro; falls back to Piper) =="
+  VO="$(python3 src/tts_local.py "$INTAKE" "$RUN")"
 else
   echo "== 1/6 voice: ElevenLabs (continuous read)  [\$] =="
   : "${ELEVENLABS_API_KEY:?set ELEVENLABS_API_KEY}"

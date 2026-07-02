@@ -40,15 +40,16 @@ A video is `{ "format", "aspect", "voice_id", "beats": [...] }`. Each beat:
 
 ## Cost discipline
 
-- Always build a **rough cut with a free local voice** (Piper) first. Let the human review
-  flow and cuts. Only generate the paid voice after they approve.
-- The voice is the only meaningful cost. Images and music are pennies. Never re-voice the
-  whole script to fix one line — fix the text and re-voice just what changed if the tooling
-  allows, or accept the rough cut for review.
+- Always build a **rough cut with the free local voice first** (`src/tts_local.py` —
+  Kokoro-82M, near-human, $0; falls back to Piper if Kokoro isn't installed). Let the
+  human review flow and cuts. Only generate the paid voice after they approve.
+- The paid voice is the only meaningful cost. Images and music are pennies. Never re-voice
+  the whole script to fix one line — fix the text and re-voice just what changed if the
+  tooling allows, or accept the rough cut for review.
 
 ## Never
 
-- Never commit a `.env` or any real key (`sk_...`, `sk-...`, `AIza...`).
+- Never commit a `.env`/`.envrc` or any real key (`sk_...`, `sk-...`, `AIza...`).
 - Never AI-generate a diagram, code block, UI, or any labeled image.
 - Never invent a price, URL, hour, or claim. Ask or leave it out.
 - Never insert `<break>` tags to fix pacing — use sentence shape and whitespace.
@@ -60,6 +61,11 @@ A video is `{ "format", "aspect", "voice_id", "beats": [...] }`. Each beat:
 then `./ghostreel.sh <intake.json>` for the paid final. It chains voice → images → music →
 `build_kinetic.py` (kinetic.css/js engine) → `record_html.mjs` → ffmpeg → captions →
 `cheatsheet.py`. Sample: `examples/intake.example.json`.
+
+**Local rough voice:** `src/tts_local.py` — Kokoro-first (KOKORO_DIR, default
+`~/.local/share/kokoro-tts`; KOKORO_VOICE, default `am_michael`), Piper fallback
+(PIPER_BIN + PIPER_VOICE). Same output contract as the paid `src/tts.py`, so the rest of
+the pipeline doesn't care which one ran.
 
 **Explainer (long-form):** `src/tts.py` (voice), `src/record_html.mjs` (HTML→mp4),
 `src/assemble.sh` (assemble), `src/run.sh` (the whole order). Adapt them; keep the order.

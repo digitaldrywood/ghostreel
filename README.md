@@ -1,16 +1,16 @@
 # ghostreel
 
-**Make studio-quality video with AI. No camera. No editor. No face.**
+**Studio-quality video with AI. No camera. No editor. No face.**
 
-ghostreel is a reference implementation of *video as code*: you write a script, an AI
-voice reads it, AI fills in the visuals and music, and a handful of free tools assemble
-the whole thing into a finished video. The script is the only thing you touch. The edit
-is a diff.
+I run two video operations — a retail ad shop and a developer YouTube channel — and I
+haven't pointed a camera at anything in months. Both run on the same idea: the script is
+a file, an AI voice reads it, AI fills in the visuals and music, and free tools assemble
+the whole thing into a finished video. The script is the only thing I touch. The edit is
+a diff.
 
-One person can ship a faceless YouTube explainer in an afternoon, or a vertical ad reel
-in minutes — for the price of a voiceover and a few pennies of image generation.
-
-This repo teaches the method and gives you a tiny, runnable pipeline to start from.
+ghostreel is that method, boiled down to a tiny pipeline you can actually run. One person
+can ship a faceless YouTube explainer in an afternoon, or a vertical ad reel in minutes —
+for the price of a voiceover and a few pennies of image generation.
 
 ---
 
@@ -23,15 +23,16 @@ video with this method. Do this, in order:
 2. **Read `examples/scenes.example.json`** — this is the data model. A video is a list of
    *beats*. Each beat is one spoken line (`say`) plus one visual (`show`). Internalize it.
 3. **Ask the human for the topic and the script.** Help them write `say` lines: short,
-   complete sentences in their own voice. One idea per beat. Do not pad. Do not use
-   AI-crutch phrases ("honestly", "here's the thing", "the truth is", "let me be clear").
+   complete sentences in their own voice. One idea per beat. Do not pad. Skip the
+   AI-crutch phrases — the filler a chatbot reaches for when it has nothing to say.
+   Write it the way the human actually talks.
 4. **Plan the visuals.** For each beat pick a `show`: a real screen capture, a diagram, a
    terminal, or — sparingly — an AI image for emotional B-roll. **Anything with text or
    labels must be a real capture, a diagram, or HTML — never an AI image** (image models
    garble text).
-5. **Build a free rough cut first.** Generate the whole video with a *local* TTS (e.g.
-   Piper) so it costs nothing. Watch it end to end. Does the script breathe? Do the cuts
-   land? Re-edit the `scenes.json` until it's right.
+5. **Build a free rough cut first.** Generate the whole video with the local voice
+   (`src/tts_local.py` — Kokoro, near-human, $0). Watch it end to end. Does the script
+   breathe? Do the cuts land? Re-edit until it's right. It costs nothing to be wrong here.
 6. **Only then spend money.** Swap in the paid voice (ElevenLabs) for the final pass.
 7. **Follow the pipeline order** in `AGENTS.md` and `src/run.sh`. Use the scripts in
    `src/` as the pattern; adapt them, don't fight them.
@@ -42,12 +43,13 @@ Never invent prices, URLs, or facts. Never commit a real API key.
 
 ## The idea in one minute
 
-Recording and editing is the bottleneck — not ideas. A 10–15 minute talking-head video is
-4–6 hours of work once you count re-takes, color, audio, and editing every stutter. That
-caps most people at about one video a week.
+Recording and editing is the bottleneck — not ideas. A 10–15 minute talking-head video
+took me 4–6 hours once I counted re-takes, color, audio, and editing out every stutter.
+I tried the modern editors too. They helped. But I was still capped at about one video a
+week, and most of that time was mechanical.
 
-ghostreel removes the recording and the editing. You write a script. The machine does the
-rest. Your time goes to the part that matters — the writing and the review.
+So I stopped recording. Now I write a script, and the machine does the rest. My time goes
+to the writing and the review — the parts that carry the message.
 
 **The script is the source of truth.** Change the file, re-run, get a new video. The
 "edit" is a diff, not a timeline you scrub.
@@ -109,22 +111,26 @@ Two flavors fall out of the same pipeline:
 
 | Tool | Role | Cost |
 |---|---|---|
-| **ElevenLabs** (or any TTS) | the voice | the only real cost — a subscription |
+| **ElevenLabs** (or any TTS) | the final voice | the only real cost — a subscription |
 | **gpt-image** / image API | B-roll art | pennies per image |
 | **Lyria** / music API | the music bed | free tier / pennies |
 | **ffmpeg** | all video & audio | free, open source |
 | **Playwright** | record HTML animations | free, open source |
-| **Piper** | free local voice for rough cuts | free, open source |
+| **Kokoro** (Piper fallback) | free local voice for rough cuts | free, open source |
 | **Python / bash** | glue | free |
 
 A ~30-second short runs about **$0.25–0.35 pay-as-you-go** (a real test run came to $0.33),
 dominated by the images. A long explainer is a few dollars of voice. The pipeline is free.
 
 The move that keeps it cheap: **rough-cut with a free local voice, approve, then pay once.**
+And the local voice got good. My first rough cuts used Piper — dependable, but a robot.
+Then I swapped in **Kokoro-82M**, a local model that runs about 5x faster than realtime on
+CPU and sounds close to human. Now the $0 review cut is genuinely listenable, so I catch
+pacing and flow problems before a single credit gets spent.
 
 ---
 
-## Hard-won rules (read these — they cost real time to learn)
+## Hard-won rules (these cost me real time to learn)
 
 - **One continuous read, not per-beat.** Send the whole script to the TTS in one call and
   use the returned word timestamps to cut visuals. Per-beat clips sound disjointed.
@@ -136,7 +142,7 @@ The move that keeps it cheap: **rough-cut with a free local voice, approve, then
   confirm it matches the line being spoken at that second.
 - **Never AI-generate anything with text/labels.** Diagrams, code, UI → real captures,
   Mermaid, or HTML. AI images are for short emotional B-roll only.
-- **Rough cut free, final paid.** Review with a local voice before you spend a cent.
+- **Rough cut free, final paid.** Review with the local voice before you spend a cent.
 - **Master high-res.** For YouTube, render at 1440p+ so it lands in the higher bitrate
   tier; text stays crisp.
 
@@ -147,16 +153,34 @@ The move that keeps it cheap: **rough-cut with a free local voice, approve, then
 You need `python3`, `node`, and `ffmpeg` on PATH.
 
 ```bash
-npm install                 # installs Playwright + Chromium (for recording HTML)
+npm install                  # installs Playwright + Chromium (for recording HTML)
 cp .envrc.example .envrc     # fill in your API keys, then:
 direnv allow                 # (or, without direnv:  set -a; source .envrc; set +a)
 
-# 1) FREE preview — local robot voice, placeholder cards. Costs nothing. Watch the flow.
+# 1) FREE preview — near-human local voice, placeholder cards. Costs nothing.
 ./ghostreel.sh --rough examples/intake.example.json
 
 # 2) When it's right, the paid final — real voice + AI images + music (~$0.25–0.35):
 ./ghostreel.sh examples/intake.example.json
 ```
+
+### The free local voice (Kokoro)
+
+The rough cut uses **Kokoro-82M** via `kokoro-onnx` — near-human, ~5x realtime on CPU,
+completely local. Install it once, *outside* this repo (the models are ~350MB and don't
+belong in git or a synced folder):
+
+```bash
+mkdir -p ~/.local/share/kokoro-tts && cd ~/.local/share/kokoro-tts
+python3 -m venv venv && venv/bin/pip install kokoro-onnx soundfile
+# download kokoro-v1.0.onnx and voices-v1.0.bin from:
+#   https://github.com/thewh1teagle/kokoro-onnx/releases
+```
+
+`src/tts_local.py` finds it there automatically (override with `KOKORO_DIR`; pick a voice
+with `KOKORO_VOICE`, default `am_michael`). No Kokoro? It falls back to **Piper** —
+robotic, but fine for checking flow (`pip install piper-tts`, set `PIPER_BIN` +
+`PIPER_VOICE`).
 
 Out comes `out/<title>/short.mp4`, a word-timed `short.srt`, and a `cheatsheet.html`
 receipt that adds up exactly what the run cost. Edit `examples/intake.example.json` (or
@@ -181,7 +205,7 @@ ghostreel.sh                 one command: intake.json → finished vertical shor
 examples/intake.example.json a fun 6-beat sample reel (theme → short)
 examples/scenes.example.json a tiny sample explainer (long-form flavor)
 src/tts.py                   ElevenLabs with-timestamps (one continuous read)  [paid]
-src/tts_piper.py             FREE local voice for rough cuts (Piper)
+src/tts_local.py             FREE local voice for rough cuts (Kokoro; Piper fallback)
 src/images.py                gpt-image B-roll (sequential, retrying)            [paid]
 src/music.py                 ElevenLabs Music instrumental bed                 [from plan]
 src/build_kinetic.py         intake + timings → kinetic HTML (uses the engine below)

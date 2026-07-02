@@ -2,16 +2,16 @@
 
 ## The problem
 
-Recording and editing is the bottleneck — not ideas. A 10–15 minute talking-head video is
-4–6 hours of work: setup, re-takes, color, audio, and editing out every stutter. Even good
-editors (Descript and friends) only shave that down so far. Most people cap out at about
-one video a week and burn out.
+Recording and editing is the bottleneck — not ideas. A 10–15 minute talking-head video
+cost me 4–6 hours: setup, re-takes, color, audio, and editing out every stutter. I tried
+the modern editors, and they helped, but not enough. I was capped at about one video a
+week, and most of that time was mechanical work a machine should be doing.
 
 ## The shift
 
-Stop recording. Make the **script** the whole video. Write it as data; let the machine read
-it, illustrate it, and assemble it. Your time goes to writing and reviewing — the parts that
-actually carry the message.
+Stop recording. Make the **script** the whole video. Write it as data; let the machine
+read it, illustrate it, and assemble it. Your time goes to writing and reviewing — the
+parts that carry the message.
 
 > The script is the source of truth. The edit is a diff.
 
@@ -43,12 +43,17 @@ and you have the video. (`examples/scenes.example.json`.)
 
 ## The cost
 
-Only the voice costs anything meaningful. Images are pennies, music is a free tier, and
-ffmpeg/Playwright/Python are free. A short is about a quarter; a long explainer is a few
-dollars. The discipline that keeps it cheap: **rough-cut with a free local voice (Piper),
-watch it, fix it, and only then pay for the final voice.**
+Only the paid voice costs anything meaningful. Images are pennies, music is a free tier,
+and ffmpeg/Playwright/Python are free. A short is about a quarter; a long explainer is a
+few dollars.
 
-## The rules that cost real time to learn
+The discipline that keeps it cheap: **rough-cut with a free local voice, watch it, fix it,
+and only then pay for the final voice.** And that free voice is no longer a robot. My
+first rough cuts used Piper — dependable, but you winced through the review. Now the local
+pass runs **Kokoro-82M**, which sounds close to human, so the $0 cut is listenable enough
+to judge pacing and flow for real. Piper stays as the fallback.
+
+## The rules that cost me real time to learn
 
 - One continuous read, never per-beat — per-beat clips sound disjointed.
 - Pace with whitespace (one sentence per line), never `<break>` tags.

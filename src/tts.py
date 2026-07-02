@@ -14,7 +14,7 @@ Usage: python3 src/tts.py <script.json> <run_dir>
 Writes: <run>/audio/vo.mp3, <run>/audio/words.json, <run>/audio/timing.json
 Prints: VO_CHARS=<n>  VO_DURATION=<secs>
 
-Free rough cuts: use src/tts_piper.py instead (local, $0) before you pay for this.
+Free rough cuts: use src/tts_local.py instead (Kokoro, local, $0) before you pay for this.
 This file is intentionally small and unframeworked — read it, adapt it.
 """
 import base64, json, os, sys, urllib.request, urllib.error
