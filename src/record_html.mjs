@@ -30,7 +30,20 @@ const ctx = await browser.newContext({
 const page = await ctx.newPage();
 const t0 = Date.now();
 await page.goto("file://" + file, { waitUntil: "load" });
-await page.evaluate(() => document.fonts.ready); // wait for fonts so frame 0 isn't blank
+// Everything the first frames depend on has to be decoded BEFORE we measure the
+// lead-in, or the trim lands in the wrong place and the video opens on blank
+// frames. Fonts alone are not enough — CSS background images decode lazily.
+await page.evaluate(async () => {
+  await document.fonts.ready;
+  const urls = [...document.querySelectorAll('[style*="background-image"]')]
+    .map((el) => (getComputedStyle(el).backgroundImage.match(/url\("?(.+?)"?\)/) || [])[1])
+    .filter(Boolean);
+  await Promise.all(
+    urls.map((u) => new Promise((res) => { const i = new Image(); i.onload = i.onerror = res; i.src = u; })),
+  );
+  // two rAFs = the browser has actually painted a settled frame
+  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+});
 await page.waitForTimeout(220);
 const lead = (Date.now() - t0) / 1000; // trim the loading lead-in off the front
 await page.evaluate(() => window.__startTL && window.__startTL()); // start the animation

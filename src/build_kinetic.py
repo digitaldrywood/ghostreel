@@ -83,7 +83,7 @@ def main():
             if tag:
                 acts.append(f"reveal('#{sid}',160)")
             if badge:
-                acts.append(f"inn('#bg{i}',240);fxBurst(true)")
+                acts.append(f"inn('#bg{i}',240)" + ("" if fx == "none" else ";fxBurst(true)"))
             T.append((start, ";".join(acts)))
         else:
             lines = show.get("lines") or [{"t": b["say"].upper(), "cls": "big gold glow"}]
