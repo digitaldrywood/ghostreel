@@ -11,10 +11,12 @@ Usage: python3 src/cheatsheet.py --out out/x/cheatsheet.html --title "..." --the
 """
 import sys
 
-# ---- approximate unit costs (mid-2026; verify before quoting) ----
-EL_CREDIT_USD = 22 / 100_000        # ElevenLabs Creator: $22 / 100k credits
-EL_CHARS_PER_CREDIT = 1             # multilingual_v2 ~1 credit/char
-EL_MUSIC_CREDITS_PER_SEC = 15       # ~900 credits/min
+# ---- unit costs -----------------------------------------------------------
+# Published list prices. Update RATES_AS_OF whenever you touch these; the date
+# is printed on the receipt so a stale number is obvious instead of invisible.
+RATES_AS_OF = "2026-07-27"
+EL_USD_PER_1K_CHARS = 0.10          # ElevenLabs TTS, pay-as-you-go
+EL_MUSIC_USD_PER_MIN = 0.15         # ElevenLabs Music
 IMG_USD = {"1024x1024": {"low": .011, "medium": .042, "high": .167},
            "1024x1536": {"low": .016, "medium": .063, "high": .25},
            "1536x1024": {"low": .016, "medium": .063, "high": .25}}
@@ -33,8 +35,8 @@ def main():
     music_s = float(arg("--music-seconds", "0")); duration = float(arg("--duration", "0"))
     voice = arg("--voice", "AI voice")
 
-    vo_usd = chars * EL_CHARS_PER_CREDIT * EL_CREDIT_USD
-    mus_usd = music_s * EL_MUSIC_CREDITS_PER_SEC * EL_CREDIT_USD
+    vo_usd = chars / 1000.0 * EL_USD_PER_1K_CHARS
+    mus_usd = music_s / 60.0 * EL_MUSIC_USD_PER_MIN
     img_each = IMG_USD.get(imgsize, IMG_USD["1024x1536"]).get(imgq, .063)
     img_usd = images * img_each
 
@@ -49,7 +51,7 @@ def main():
         ("Assemble · caption", "ffmpeg · Playwright · Python", "$0", "$0"),
     ]
     tr = "".join(
-        f"<tr><td>{a}</td><td class='d'>{b}</td><td class='n'>{c}</td><td class='n'>{d}</td></tr>"
+        f" · rates as of {RATES_AS_OF}<tr><td>{a}</td><td class='d'>{b}</td><td class='n'>{c}</td><td class='n'>{d}</td></tr>"
         for a, b, c, d in rows)
 
     html = f"""<!doctype html><meta charset=utf-8><title>{title} — receipt</title>

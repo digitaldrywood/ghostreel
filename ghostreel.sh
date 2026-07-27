@@ -24,9 +24,19 @@ if [ -z "${ELEVENLABS_API_KEY:-}" ] && [ -f .envrc ]; then set -a; . ./.envrc; s
 
 need() { command -v "$1" >/dev/null || { echo "missing dependency: $1"; exit 1; }; }
 need ffmpeg; need node; need python3; need convert
-[ -d node_modules/playwright ] || [ -n "${GHOSTREEL_NODE_PATH:-}" ] || {
-  echo "Playwright not installed. Run:  npm install"; exit 1; }
-export NODE_PATH="${GHOSTREEL_NODE_PATH:-$HERE/node_modules}"
+# ESM `import` ignores NODE_PATH, so a borrowed tree has to be visible at ./node_modules.
+if [ ! -d node_modules/playwright ] && [ -n "${GHOSTREEL_NODE_PATH:-}" ]; then
+  ln -sfn "$GHOSTREEL_NODE_PATH" node_modules
+fi
+[ -d node_modules/playwright ] || { echo "Playwright not installed. Run:  npm install"; exit 1; }
+export NODE_PATH="$HERE/node_modules"
+
+# Validate keys BEFORE touching out/ — a paid run that dies on a missing key used
+# to delete a perfectly good rough cut on its way out.
+if [ "$ROUGH" = 0 ]; then
+  : "${ELEVENLABS_API_KEY:?set ELEVENLABS_API_KEY (cp .envrc.example .envrc, fill it, direnv allow)}"
+  : "${OPENAI_API_KEY:?set OPENAI_API_KEY (cp .envrc.example .envrc, fill it, direnv allow)}"
+fi
 
 SLUG="$(python3 -c "import json,re,sys;t=json.load(open(sys.argv[1])).get('title','short');print(re.sub(r'[^a-z0-9]+','-',t.lower()).strip('-') or 'short')" "$INTAKE")"
 RUN="out/$SLUG"; rm -rf "$RUN"; mkdir -p "$RUN/audio" "$RUN/assets"
@@ -39,7 +49,6 @@ if [ "$ROUGH" = 1 ]; then
   VO="$(python3 src/tts_local.py "$INTAKE" "$RUN")"
 else
   echo "== 1/6 voice: ElevenLabs (continuous read)  [\$] =="
-  : "${ELEVENLABS_API_KEY:?set ELEVENLABS_API_KEY}"
   VO="$(python3 src/tts.py "$INTAKE" "$RUN")"
 fi
 VO_CHARS="$(printf '%s\n' "$VO" | sed -n 's/^VO_CHARS=//p')"
@@ -50,7 +59,6 @@ if [ "$ROUGH" = 1 ]; then
   echo "== 2/6 images: skipped (rough cut uses placeholder cards) =="
 else
   echo "== 2/6 images: gpt-image  [\$] =="
-  : "${OPENAI_API_KEY:?set OPENAI_API_KEY}"
   IMG_OUT="$(python3 src/images.py "$INTAKE" "$RUN" --size 1024x1536 --quality medium)"
   NIMG="$(printf '%s\n' "$IMG_OUT" | sed -n 's/^IMAGES=//p')"
   for f in "$RUN"/assets/img_*.png; do [ -f "$f" ] && convert "$f" -resize 1080x1920^ -strip -quality 88 "$f" 2>/dev/null || true; done
@@ -110,4 +118,7 @@ python3 src/cheatsheet.py --out "$RUN/cheatsheet.html" --title "$TITLE" --theme 
 echo
 echo "DONE -> $RUN/short.mp4"
 echo "       $RUN/cheatsheet.html   $RUN/short.srt"
-[ "$ROUGH" = 1 ] && echo "(rough cut — review the flow, then run without --rough for the paid final)"
+if [ "$ROUGH" = 1 ]; then
+  echo "(rough cut — review the flow, then run without --rough for the paid final)"
+fi
+exit 0
