@@ -35,6 +35,12 @@ def main():
     style = intake.get("style", {})
     bg = style.get("bg", "radial-gradient(120% 80% at 50% 16%,#16224e 0%,#0a1230 45%,#05070f 100%)")
     fxcolors = style.get("fxcolors", ["#ffd23f", "#37e3ff", "#4ade80", "#ffffff"])
+    # Particle FX. "subtle" (default) bursts only on scene changes; "none" turns
+    # particles off entirely; "party" adds the constant ambient burst loop, which
+    # suits a fireworks ad and almost nothing else.
+    fx = str(style.get("fx", "subtle")).lower()
+    if fx not in ("none", "subtle", "party"):
+        fx = "subtle"
 
     scenes, T = [], []
     end_ms = 0.0
@@ -92,13 +98,14 @@ def main():
             if i:
                 acts.append(f"hide('#s{i-1}')")
             acts.append(f"show('#{sid}');reveal('#{sid}',180)")
-            if i == 0 or show.get("burst"):
+            if fx != "none" and (i == 0 or show.get("burst")):
                 acts.append("fxBurst(false)")
             T.append((start, ";".join(acts)))
 
     total = max(end_ms / 1000.0, timing.get("duration", 0.0)) + 0.4
     tl = ",\n ".join(f"[{ms},()=>{{{acts}}}]" for ms, acts in T)
 
+    ambient = "startAmbient(680,false);" if fx == "party" else ""
     html = f"""<!doctype html><html><head><meta charset="utf-8">
 <link rel="stylesheet" href="{furl(os.path.join(SRC,'kinetic.css'))}">
 <style>#stage{{background:{bg}}}</style></head>
@@ -109,7 +116,7 @@ def main():
 <script>window.FXCOLORS={json.dumps(fxcolors)};</script>
 <script src="{furl(os.path.join(SRC,'kinetic.js'))}"></script>
 <script>
-startAmbient(680,false);
+{ambient}
 const T=[
  {tl}
 ];

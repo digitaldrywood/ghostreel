@@ -230,3 +230,18 @@ Faceless video — a ghost behind the reel. You never appear; the work does.
 
 Built by Cory LaNou / Drywood Creek Consulting · [www.digitaldrywood.com](https://www.digitaldrywood.com).
 MIT licensed — take it, learn from it, ship your own.
+
+## Particle FX
+
+`style.fx` in your intake controls the particle bursts:
+
+| value | what you get |
+|---|---|
+| `"none"` | no particles at all |
+| `"subtle"` | **default** — one burst when a scene changes |
+| `"party"` | adds a constant ambient burst loop |
+
+`"party"` suits a fireworks ad and almost nothing else. A commercial for a
+developer meetup does not want explosions going off behind the text the whole
+time — ask me how I know.
+
