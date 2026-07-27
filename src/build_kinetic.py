@@ -93,11 +93,18 @@ def main():
                 + f'>{esc(ln["t"])}</div>'
                 for ln in lines
             )
-            scenes.append(f'<div class="scene" id="{sid}">{line_html}</div>')
+            # Beat 0 ships already-visible: frame 0 is the thumbnail, and a scene
+            # that fades in from nothing gives you a blank one.
+            first = i == 0
+            cls = "scene on" if first else "scene"
+            if first:
+                line_html = line_html.replace(" data-k", " data-k class-in")
+                line_html = line_html.replace('class="line ', 'class="in line ').replace(" class-in", "")
+            scenes.append(f'<div class="{cls}" id="{sid}">{line_html}</div>')
             acts = []
             if i:
                 acts.append(f"hide('#s{i-1}')")
-            acts.append(f"show('#{sid}');reveal('#{sid}',180)")
+            acts.append(f"show('#{sid}')" if first else f"show('#{sid}');reveal('#{sid}',180)")
             if fx != "none" and (i == 0 or show.get("burst")):
                 acts.append("fxBurst(false)")
             T.append((start, ";".join(acts)))
