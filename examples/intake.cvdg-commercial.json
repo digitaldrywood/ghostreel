@@ -1,0 +1,120 @@
+{
+  "title": "Chippewa Valley Developer Group",
+  "theme": "a recruiting commercial for the Chippewa Valley Developer Group (CVDG), a free monthly developer community in the Chippewa Valley, Wisconsin",
+  "voice_id": "cgSgspJ2msm6clMCkdW9",
+  "voice_label": "Jessica (ElevenLabs)",
+  "music_prompt": "upbeat modern indie-tech underscore, warm and community-driven, light percussion and bright synth, 110 bpm, instrumental only, absolutely no vocals",
+  "style": {
+    "bg": "radial-gradient(120% 80% at 50% 12%,#123a52 0%,#0e1c3a 46%,#06060f 100%)",
+    "fxcolors": [
+      "#38bdf8",
+      "#34d399",
+      "#f4c542",
+      "#a78bfa"
+    ]
+  },
+  "beats": [
+    {
+      "say": "You don't have to code alone.",
+      "show": {
+        "type": "text",
+        "lines": [
+          {
+            "t": "YOU DON'T HAVE TO",
+            "cls": "big cream glow"
+          },
+          {
+            "t": "CODE ALONE",
+            "cls": "huge cyan glow"
+          }
+        ]
+      }
+    },
+    {
+      "say": "The Chippewa Valley Developer Group is a community of developers right here in the valley.",
+      "show": {
+        "type": "image",
+        "prompt": "a warm, welcoming meetup of software developers in a modern classroom, laptops open, someone presenting at a screen, people smiling and engaged, evening light, candid documentary photography, vertical composition",
+        "style": "photoreal",
+        "tag": "CHIPPEWA VALLEY, WI"
+      }
+    },
+    {
+      "say": "We meet every month for open discussions and real presentations.",
+      "show": {
+        "type": "text",
+        "lines": [
+          {
+            "t": "EVERY MONTH",
+            "cls": "big gold glow"
+          },
+          {
+            "t": "TALKS +",
+            "cls": "huge cream glow"
+          },
+          {
+            "t": "OPEN DISCUSSION",
+            "cls": "huge cyan glow"
+          }
+        ]
+      }
+    },
+    {
+      "say": "Whether you sling C sharp, play with Python, rock Ruby, or love JavaScript, you'll fit in great.",
+      "show": {
+        "type": "text",
+        "lines": [
+          {
+            "t": "C#  \u00b7  PYTHON  \u00b7  RUBY",
+            "cls": "big cyan glow"
+          },
+          {
+            "t": "GO  \u00b7  JAVASCRIPT",
+            "cls": "big green glow"
+          },
+          {
+            "t": "BRING WHAT YOU LOVE",
+            "cls": "big cream glow"
+          }
+        ]
+      }
+    },
+    {
+      "say": "Students, professionals, and hobbyists are always welcome. And it's free.",
+      "show": {
+        "type": "image",
+        "prompt": "a diverse group of software developers of different ages standing and laughing together after a tech talk, holding plain coffee cups, warm friendly natural light, candid documentary photography, vertical composition, no lanyards, no badges, no signage",
+        "style": "photoreal",
+        "badge": {
+          "label": "ALWAYS WELCOME",
+          "price": "FREE"
+        }
+      }
+    },
+    {
+      "say": "And once a year, we run Code Camp. A free day of talks, food, and people who get it.",
+      "show": {
+        "type": "image",
+        "prompt": "a packed conference session room at a free one-day developer code camp, attendees watching a speaker, projector screen glowing, energetic professional atmosphere, candid documentary photography, vertical composition",
+        "style": "photoreal",
+        "tag": "CODE CAMP \u00b7 ONE FREE DAY"
+      }
+    },
+    {
+      "say": "We love code. Come find us at C V dev group dot org.",
+      "show": {
+        "type": "text",
+        "lines": [
+          {
+            "t": "WE LOVE CODE",
+            "cls": "huge gold glow"
+          },
+          {
+            "t": "CVDEVGROUP.ORG",
+            "cls": "big cyan glow"
+          }
+        ]
+      }
+    }
+  ]
+}
