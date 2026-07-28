@@ -40,7 +40,7 @@ for b in scenes:
     if cue:                       # cut in on the concept word, if present in this span
         cw = cue.split()[0].strip(".,!?").lower()
         for w in span:
-            if w["word"].strip(".,!?").lower() == cw:
+            if w["w"].strip(".,!?").lower() == cw:
                 start = w["start"]; break
     starts.append(start)
     i += n
