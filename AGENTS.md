@@ -1,7 +1,8 @@
 # AGENTS.md — guide for AI assistants
 
 You are helping a human build a video with the *video as code* method. This file is the
-machine-readable contract. Read `README.md` and `docs/the-method.md` first.
+machine-readable contract. Read `README.md`, `docs/the-method.md`, and
+`docs/writing-for-the-ear.md` first.
 
 ## The one rule
 
@@ -26,8 +27,9 @@ A video is `{ "format", "aspect", "voice_id", "beats": [...] }`. Each beat:
 
 ## Pipeline order (do not reorder)
 
-1. `lint` — script reads like the human; no run-ons, no AI-crutch phrases, no visual reused
-   across two beats.
+1. `lint` — apply `docs/writing-for-the-ear.md` to the complete narration, not isolated
+   beats. The script must pass its rhythm, banned-word, banned-pattern, and spoken-form
+   checks before storyboard; also reject run-ons and visuals reused across two beats.
 2. `storyboard` — emit a SAY | SHOW table; get human approval before spending money.
 3. `render` — produce each beat's visual file. Captures/diagrams/terminals/HTML for
    anything with text. AI images ONLY for short emotional B-roll.

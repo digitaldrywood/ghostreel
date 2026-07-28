@@ -20,21 +20,23 @@ If you're an AI assistant and someone pointed you here, your job is to help them
 video with this method. Do this, in order:
 
 1. **Read `docs/the-method.md`** — the whole philosophy in one page.
-2. **Read `examples/scenes.example.json`** — this is the data model. A video is a list of
+2. **Read `docs/writing-for-the-ear.md`** — this is the required narration gate. Apply it
+   to the complete spoken script before you plan the storyboard.
+3. **Read `examples/scenes.example.json`** — this is the data model. A video is a list of
    *beats*. Each beat is one spoken line (`say`) plus one visual (`show`). Internalize it.
-3. **Ask the human for the topic and the script.** Help them write `say` lines: short,
-   complete sentences in their own voice. One idea per beat. Do not pad. Skip the
-   AI-crutch phrases — the filler a chatbot reaches for when it has nothing to say.
-   Write it the way the human actually talks.
-4. **Plan the visuals.** For each beat pick a `show`: a real screen capture, a diagram, a
+4. **Ask the human for the topic and the script.** Help them write `say` lines in their
+   own voice, with one idea per beat and varied sentence length across the complete read.
+   Do not pad. Apply the banned words, banned patterns, and spoken-form checks in the
+   writing guide. Write it the way the human actually talks.
+5. **Plan the visuals.** For each beat pick a `show`: a real screen capture, a diagram, a
    terminal, or — sparingly — an AI image for emotional B-roll. **Anything with text or
    labels must be a real capture, a diagram, or HTML — never an AI image** (image models
    garble text).
-5. **Build a free rough cut first.** Generate the whole video with the local voice
+6. **Build a free rough cut first.** Generate the whole video with the local voice
    (`src/tts_local.py` — Kokoro, near-human, $0). Watch it end to end. Does the script
    breathe? Do the cuts land? Re-edit until it's right. It costs nothing to be wrong here.
-6. **Only then spend money.** Swap in the paid voice (ElevenLabs) for the final pass.
-7. **Follow the pipeline order** in `AGENTS.md` and `src/run.sh`. Use the scripts in
+7. **Only then spend money.** Swap in the paid voice (ElevenLabs) for the final pass.
+8. **Follow the pipeline order** in `AGENTS.md` and `src/run.sh`. Use the scripts in
    `src/` as the pattern; adapt them, don't fight them.
 
 Never invent prices, URLs, or facts. Never commit a real API key.
@@ -201,6 +203,7 @@ For the long **explainer** flavor (faceless YouTube, diagrams/captures), see
 README.md                    you are here
 AGENTS.md                    machine-readable guide for AI assistants
 docs/the-method.md           the philosophy, one page
+docs/writing-for-the-ear.md  required narration-writing gate
 ghostreel.sh                 one command: intake.json → finished vertical short + receipt
 examples/intake.example.json a fun 6-beat sample reel (theme → short)
 examples/scenes.example.json a tiny sample explainer (long-form flavor)
@@ -244,4 +247,3 @@ MIT licensed — take it, learn from it, ship your own.
 `"party"` suits a fireworks ad and almost nothing else. A commercial for a
 developer meetup does not want explosions going off behind the text the whole
 time — ask me how I know.
-
