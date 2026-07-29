@@ -24,3 +24,7 @@ venv/
 *.swp
 .idea/
 .vscode/
+
+# Detent machine-local overlays
+detent.local.yaml
+WORKFLOW.local.md
