@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class AssembleTests(unittest.TestCase):
-    def test_cue_uses_tts_word_schema_to_set_visual_window(self):
+    def test_paragraph_and_sentence_beats_render_with_internal_cue(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             temp = Path(temp_dir)
             scenes_path = temp / "scenes.json"
@@ -25,7 +25,7 @@ class AssembleTests(unittest.TestCase):
                         "aspect": "16:9",
                         "beats": [
                             {"say": "Alpha opens"},
-                            {"say": "Beta cue lands here", "cue": "lands"},
+                            {"say": "Beta begins. Cue lands here", "cue": "Cue"},
                             {"say": "Gamma finishes"},
                         ],
                     }
@@ -37,11 +37,12 @@ class AssembleTests(unittest.TestCase):
                         {"w": "Alpha", "start": 0.0, "end": 0.5},
                         {"w": "opens", "start": 0.5, "end": 1.0},
                         {"w": "Beta", "start": 1.0, "end": 1.5},
-                        {"w": "cue", "start": 1.5, "end": 2.0},
-                        {"w": "lands", "start": 2.0, "end": 2.5},
-                        {"w": "here", "start": 2.5, "end": 3.0},
-                        {"w": "Gamma", "start": 3.0, "end": 3.5},
-                        {"w": "finishes", "start": 3.5, "end": 4.0},
+                        {"w": "begins.", "start": 1.5, "end": 2.0},
+                        {"w": "Cue", "start": 2.0, "end": 2.5},
+                        {"w": "lands", "start": 2.5, "end": 3.0},
+                        {"w": "here", "start": 3.0, "end": 3.5},
+                        {"w": "Gamma", "start": 3.5, "end": 4.0},
+                        {"w": "finishes", "start": 4.0, "end": 4.5},
                     ]
                 )
             )
@@ -75,8 +76,8 @@ class AssembleTests(unittest.TestCase):
                 (out / "windows.txt").read_text().splitlines(),
                 [
                     "0 0.000 2.000",
-                    "1 2.000 1.000",
-                    "2 3.000 1.000",
+                    "1 2.000 1.500",
+                    "2 3.500 1.000",
                 ],
             )
 

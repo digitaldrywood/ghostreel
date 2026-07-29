@@ -18,9 +18,9 @@ thought. Connectives such as *because*, *but*, *so*, *while*, *which*, and *yet*
 real work rather than decorate two unrelated ideas.
 
 "One idea per beat" still applies. It keeps the visual plan legible; it does not require
-uniform sentence length. A longer sentence must remain easy to follow when heard once,
-and it must not become a run-on. Judge the distribution across the whole script. Issue
-#13 owns the numeric calibration for that distribution.
+uniform sentence length. A longer sentence must remain easy to follow when heard once.
+Judge the distribution across the whole script. Issue #13 owns the numeric calibration
+for that distribution.
 
 ## Banned words
 
@@ -97,7 +97,7 @@ still responsible for catching equivalent phrasing.
 
 Before storyboard, read the joined narration aloud at a natural pace and confirm:
 
-- sentence lengths vary across the script without turning longer thoughts into run-ons;
+- sentence lengths vary across the script while longer thoughts remain clear in one pass;
 - transitions carry meaning when the visuals are hidden;
 - no banned word or banned pattern remains;
 - every number, symbol, and acronym is written the way it should sound;

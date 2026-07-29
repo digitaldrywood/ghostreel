@@ -20,9 +20,10 @@ re-shoot. If a sentence is wrong, you fix a sentence.
 
 ## The unit: a beat
 
-A video is a list of **beats**. A beat is one spoken line (`say`) and one visual (`show`).
-String the `say` lines together and you have the narration. Attach a visual to each line
-and you have the video. (`examples/scenes.example.json`.)
+A video is a list of **beats**. A beat is one complete spoken thought (`say`) and one
+visual (`show`). A thought normally spans two to five sentences, while a single sentence
+remains valid. String the `say` paragraphs together and you have the narration. Attach a
+visual to each thought and you have the video. (`examples/scenes.example.json`.)
 
 ```jsonc
 { "say": "...", "cue": "concept word", "show": { "type": "diagram", "path": "..." } }
@@ -30,8 +31,8 @@ and you have the video. (`examples/scenes.example.json`.)
 
 ## The pipeline
 
-1. **Lint** — make sure the script reads like *you*: short complete sentences, one idea per
-   beat, no filler.
+1. **Lint** — make sure the complete narration reads like *you*: varied sentence lengths,
+   one complete thought per beat, no filler.
 2. **Storyboard** — print the SAY | SHOW pairs and approve them before spending anything.
 3. **Render** — build each visual. Captures, diagrams, terminals, and HTML for anything
    with text; AI images only for short emotional B-roll.
@@ -56,7 +57,7 @@ to judge pacing and flow for real. Piper stays as the fallback.
 ## The rules that cost me real time to learn
 
 - One continuous read, never per-beat — per-beat clips sound disjointed.
-- Pace with whitespace (one sentence per line), never `<break>` tags.
+- Pace with sentence shape and whitespace between beats, never `<break>` tags.
 - Force audio to mono before concatenating, or the track garbles.
 - Validate every visual by eye against the line it's under.
 - Never AI-generate text, labels, diagrams, code, or UI — those are real captures or HTML.

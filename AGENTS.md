@@ -15,8 +15,8 @@ A video is `{ "format", "aspect", "voice_id", "beats": [...] }`. Each beat:
 
 ```jsonc
 {
-  "say":  "one spoken sentence",          // required; goes into narration + captions
-  "cue":  "verbatim substring of say",    // optional; cut the visual in on this word
+  "say":  "one complete spoken thought",  // required; one to five sentences
+  "cue":  "verbatim substring of say",    // optional; cut anywhere inside the thought
   "show": {
     "type": "capture|diagram|terminal|text|image",
     "path": "assets/foo.png",             // for capture/diagram/terminal/image
@@ -25,17 +25,21 @@ A video is `{ "format", "aspect", "voice_id", "beats": [...] }`. Each beat:
 }
 ```
 
+`say` normally holds a paragraph of two to five sentences, but a single-sentence beat
+remains valid. Keep one complete thought and one visual together; `cue` may match words
+anywhere inside that paragraph.
+
 ## Pipeline order (do not reorder)
 
 1. `lint` — apply `docs/writing-for-the-ear.md` to the complete narration, not isolated
    beats. The script must pass its rhythm, banned-word, banned-pattern, and spoken-form
-   checks before storyboard; also reject run-ons and visuals reused across two beats.
+   checks before storyboard; also reject visuals reused across two beats.
 2. `storyboard` — emit a SAY | SHOW table; get human approval before spending money.
 3. `render` — produce each beat's visual file. Captures/diagrams/terminals/HTML for
    anything with text. AI images ONLY for short emotional B-roll.
 4. `voice` — ONE continuous TTS call for the whole script; keep the word timestamps.
-5. `sync` — set each visual's window from the cue word; enforce min on-screen dwell
-   (diagrams ≥5s, stills ≥4s).
+5. `sync` — set each visual's window from the cue word; enforce minimum dwell for each
+   visual, independent of the beat's sentence count (diagrams ≥5s, stills ≥4s).
 6. `assemble` — ffmpeg, frame-snapped, mono voice track.
 7. `music` — instrumental bed, low volume, under the whole thing.
 8. `caption` — word-timed `.srt`; burn-in only for vertical shorts.
