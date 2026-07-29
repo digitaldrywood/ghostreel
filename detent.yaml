@@ -144,10 +144,13 @@ gate:
   # Fold that command into this gate once it merges.
   run: sh -c 'set -e; python3 -m compileall -q src; for f in ghostreel.sh src/*.sh; do bash -n "$f"; done; node --check src/record_html.mjs; for f in examples/*.json; do python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$f"; done; if [ -d tests ]; then python3 -m unittest discover -s tests; fi'
   require_automated_review: false
-  # Empty because the repository has no CI workflow at all. Populate this the
-  # moment a .github/workflows check exists, or auto-promotion is gated on
-  # nothing but the local command gate above.
-  required_status_checks: []
+  # `CI` is the job name in .github/workflows/ci.yml, which mirrors gate.run
+  # above step for step. Naming it explicitly is what makes the promotion gate
+  # legible: before this workflow existed the repo had no checks at all, GitHub
+  # reported every PR head as status "pending" rather than "success", and
+  # auto-promote parked every finished issue forever with `ci_not_green`.
+  required_status_checks:
+    - CI
   ci_failure_action: rework
   transient_ci_retry_limit: 2
   # Left off: the static gate is cheap and the repo has no test suite for a
