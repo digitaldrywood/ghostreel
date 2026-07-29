@@ -23,15 +23,52 @@ Kokoro weights are Apache-2.0 and kokoro-onnx is MIT, so both are fine to use he
 
 Usage: python3 src/tts_local.py <script.json> <run_dir>
 Writes the same files as tts.py (vo.mp3, words.json, timing.json) so the rest of the
-pipeline is identical. Word timings are approximate (evenly spread per beat) — fine
-for reviewing flow; the paid pass gets exact alignment.
+pipeline is identical. Word timings are approximate (spread across the continuous
+transcript) — fine for reviewing flow; the paid pass gets exact alignment.
 """
-import json, os, shutil, subprocess, sys, tempfile
+import json, os, re, shutil, subprocess, sys, tempfile
 
 KOKORO_DIR = os.environ.get("KOKORO_DIR", os.path.expanduser("~/.local/share/kokoro-tts"))
 KOKORO_PY = os.path.join(KOKORO_DIR, "venv/bin/python")
 KOKORO_MODEL = os.path.join(KOKORO_DIR, "kokoro-v1.0.onnx")
 KOKORO_VOICES = os.path.join(KOKORO_DIR, "voices-v1.0.bin")
+
+
+def build_transcript(beats):
+    """Join every beat for one continuous read and retain its character span."""
+    full, spans = "", []
+    for i, beat in enumerate(beats):
+        say = beat["say"].strip()
+        if i:
+            full += "\n"
+        start = len(full)
+        full += say
+        spans.append((start, len(full)))
+    return full, spans
+
+
+def approximate_timings(text, spans, duration):
+    """Map transcript character positions onto the continuous audio duration."""
+    scale = duration / len(text) if text else 0.0
+    timing = {
+        "duration": round(duration, 3),
+        "beats": [
+            {
+                "audio_start": round(start * scale, 3),
+                "audio_end": round(end * scale, 3),
+            }
+            for start, end in spans
+        ],
+    }
+    words = [
+        {
+            "w": match.group().strip(".,!?;:"),
+            "start": round(match.start() * scale, 3),
+            "end": round(match.end() * scale, 3),
+        }
+        for match in re.finditer(r"\S+", text)
+    ]
+    return words, timing
 
 
 def pick_engine():
@@ -103,29 +140,18 @@ def main():
     run = sys.argv[2]
     os.makedirs(os.path.join(run, "audio"), exist_ok=True)
 
-    tmp = tempfile.mkdtemp()
-    wavs, timing = [], {"duration": 0.0, "beats": []}
-    words, t = [], 0.0
-    for i, b in enumerate(beats):
-        wav = os.path.join(tmp, f"{i}.wav")
-        speak(b["say"].strip(), wav)
+    text, spans = build_transcript(beats)
+    with tempfile.TemporaryDirectory() as tmp:
+        wav = os.path.join(tmp, "vo.wav")
+        speak(text, wav)
         d = dur(wav)
-        wavs.append(wav)
-        timing["beats"].append({"audio_start": round(t, 3), "audio_end": round(t + d, 3)})
-        toks = b["say"].split()
-        for j, w in enumerate(toks):  # spread words evenly across the beat
-            ws = t + d * j / max(1, len(toks))
-            we = t + d * (j + 1) / max(1, len(toks))
-            words.append({"w": w.strip(".,!?;:"), "start": round(ws, 3), "end": round(we, 3)})
-        t += d
-    timing["duration"] = round(t, 3)
 
-    # concat wavs -> vo.mp3 (mono 44.1k, same contract as the paid pass)
-    lst = os.path.join(tmp, "list.txt")
-    open(lst, "w").write("\n".join(f"file '{w}'" for w in wavs))
-    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0",
-                    "-i", lst, "-ac", "1", "-ar", "44100",
-                    os.path.join(run, "audio", "vo.mp3")], check=True)
+        # Single synthesized WAV -> vo.mp3 (mono 44.1k, same contract as the paid pass).
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", wav,
+                        "-ac", "1", "-ar", "44100",
+                        os.path.join(run, "audio", "vo.mp3")], check=True)
+
+    words, timing = approximate_timings(text, spans, d)
 
     json.dump(words, open(os.path.join(run, "audio", "words.json"), "w"), indent=1)
     json.dump(timing, open(os.path.join(run, "audio", "timing.json"), "w"), indent=1)
