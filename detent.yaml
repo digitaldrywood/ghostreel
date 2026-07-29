@@ -132,9 +132,14 @@ gate:
   # touching the pipeline, beat schema, TTS, or cue sync — it needs Kokoro,
   # Playwright Chromium and ImageMagick, so it is not run on every PR.
   #
+  # The tests/ suite arrived with ghostreel#9 and is stdlib unittest, so it needs
+  # no pytest and no new dependency. It is guarded by a directory check because a
+  # branch cut before that merge has no tests/ and `unittest discover` would fail
+  # there, sending an otherwise-good issue to Rework.
+  #
   # ghostreel#13 replaces the script-lint echo with a real src/lint_script.py.
   # Fold that command into this gate once it merges.
-  run: sh -c 'set -e; python3 -m compileall -q src; for f in ghostreel.sh src/*.sh; do bash -n "$f"; done; node --check src/record_html.mjs; for f in examples/*.json; do python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$f"; done'
+  run: sh -c 'set -e; python3 -m compileall -q src; for f in ghostreel.sh src/*.sh; do bash -n "$f"; done; node --check src/record_html.mjs; for f in examples/*.json; do python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$f"; done; if [ -d tests ]; then python3 -m unittest discover -s tests; fi'
   require_automated_review: false
   # Empty because the repository has no CI workflow at all. Populate this the
   # moment a .github/workflows check exists, or auto-promotion is gated on
