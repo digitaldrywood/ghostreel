@@ -17,7 +17,9 @@ class AssembleTests(unittest.TestCase):
             scenes_path = temp / "scenes.json"
             out = temp / "out"
             render = out / "render"
+            audio = out / "audio"
             render.mkdir(parents=True)
+            audio.mkdir()
 
             scenes_path.write_text(
                 json.dumps(
@@ -31,7 +33,7 @@ class AssembleTests(unittest.TestCase):
                     }
                 )
             )
-            (out / "words.json").write_text(
+            (audio / "words.json").write_text(
                 json.dumps(
                     [
                         {"w": "Alpha", "start": 0.0, "end": 0.5},
@@ -46,6 +48,7 @@ class AssembleTests(unittest.TestCase):
                     ]
                 )
             )
+            (audio / "vo.mp3").touch()
             for index in range(3):
                 (render / f"{index:02d}.png").touch()
 
@@ -56,6 +59,9 @@ class AssembleTests(unittest.TestCase):
                 "#!/bin/sh\n"
                 "last=\n"
                 'for arg in "$@"; do\n'
+                '  case "$arg" in\n'
+                '    *.mp3) [ -f "$arg" ] || exit 2 ;;\n'
+                '  esac\n'
                 '  last="$arg"\n'
                 "done\n"
                 ': > "$last"\n'
