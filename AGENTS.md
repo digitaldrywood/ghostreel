@@ -74,3 +74,29 @@ the pipeline doesn't care which one ran.
 
 **Keys:** read from the environment via direnv — `cp .envrc.example .envrc`, fill it,
 `direnv allow`. Scripts error clearly if a key is missing. Never write keys into the repo.
+
+## Filing an issue for the orchestrator
+
+When you discover out-of-scope work, file it as a separate issue rather than
+widening the one you are on. End the body with a `detent-agent` block so the
+orchestrator can size it:
+
+```detent-agent
+schema: 1
+effort: low
+```
+
+`effort` must be exactly one of `low`, `medium`, `high`, `xhigh`, `max`, or
+`ultra`. Plausible-sounding values like `small`, `trivial`, or `xs` are rejected
+by the backend and stall the whole project's preflight until a human edits the
+issue body. Omit the key entirely to inherit the project default.
+
+Size by how much reading the work needs, not by diff size:
+
+- `low` — one file, contract already stated in the issue (a key mismatch, a
+  wrong path, a docs edit).
+- `medium` — a few files that must agree, or a change needing a new test.
+- `high` — the beat schema, TTS timing, or cue-sync engine, where the fix has to
+  hold across the whole pipeline order.
+- `xhigh` and above — reserve for work that has to re-derive the measured
+  baseline (sentence distribution, pause statistics) before it can be judged.
