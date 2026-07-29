@@ -11,7 +11,7 @@ OUT="out/$(basename "${SCENES%.json}")"
 mkdir -p "$OUT/render"
 
 echo "==> 1. lint     — does the script read like you? (do this by eye + your own linter)"
-echo "    (keep it: short complete sentences, one idea per beat, no AI-crutch phrases)"
+echo "    (keep it: varied sentence lengths, one complete thought per beat, no AI-crutch phrases)"
 
 echo "==> 2. storyboard — confirm each beat's say pairs with the right show before spending"
 python3 - "$SCENES" <<'PY'

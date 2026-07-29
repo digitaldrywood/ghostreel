@@ -23,8 +23,9 @@ video with this method. Do this, in order:
 2. **Read `docs/writing-for-the-ear.md`** — this is the required narration gate. Apply it
    to the complete spoken script before you plan the storyboard.
 3. **Read `examples/scenes.example.json`** — this is the data model. A video is a list of
-   *beats*. Each beat is one spoken line (`say`) plus one visual (`show`). Internalize it.
-4. **Ask the human for the topic and the script.** Help them write `say` lines in their
+   *beats*. Each beat pairs one complete spoken thought (`say`) with one visual (`show`).
+   A thought normally spans two to five sentences, though one sentence is valid too.
+4. **Ask the human for the topic and the script.** Help them write `say` passages in their
    own voice, with one idea per beat and varied sentence length across the complete read.
    Do not pad. Apply the banned words, banned patterns, and spoken-form checks in the
    writing guide. Write it the way the human actually talks.
@@ -60,17 +61,19 @@ to the writing and the review — the parts that carry the message.
 
 ## The beat model
 
-A video is a JSON file: a list of **beats**. A beat is one spoken line plus one visual.
+A video is a JSON file: a list of **beats**. A beat is one complete spoken thought plus
+one visual. The thought can be a paragraph, while existing single-sentence beats remain
+valid.
 
 ```jsonc
 {
-  "say":  "I built a tool that writes code the way you do.",  // the narration
-  "cue":  "writes code",            // cut the visual in on this word (optional)
+  "say":  "The script holds the whole narration. A beat keeps one complete thought together, even when that thought takes a few sentences. The visual cuts when the cue phrase is spoken.",
+  "cue":  "visual cuts",            // cut anywhere inside the thought (optional)
   "show": { "type": "diagram", "path": "assets/board.png" }   // what's on screen
 }
 ```
 
-- The **narration** is every `say` joined together — one continuous read.
+- The **narration** is every `say` paragraph joined together — one continuous read.
 - The **visuals** are cut to the words using the voice's word-level timestamps.
 - `show.type` is one of: `capture` (a real screenshot/recording), `diagram` (Mermaid or
   HTML), `terminal`, `text` (a kinetic title card), or `image` (AI B-roll, used sparingly).
@@ -84,7 +87,7 @@ That's the whole format. See `examples/scenes.example.json`.
 ```
 scenes.json
    │
-   ├─ lint        sanity-check the script (your voice, no run-ons, no recycled visuals)
+   ├─ lint        sanity-check the script (your rhythm, spoken form, no recycled visuals)
    ├─ storyboard  print a SAY | SHOW table and approve it before spending anything
    ├─ render      build each beat's visual (capture / diagram / terminal / image)
    ├─ voice       ONE continuous TTS read with word-level timestamps  ← the only real cost
@@ -136,8 +139,9 @@ pacing and flow problems before a single credit gets spent.
 
 - **One continuous read, not per-beat.** Send the whole script to the TTS in one call and
   use the returned word timestamps to cut visuals. Per-beat clips sound disjointed.
-- **Pace with whitespace, not break tags.** One sentence per line, a blank line between
-  beats. Fighting the model with `<break>` tags sounds halting.
+- **Pace with sentence shape and whitespace, not break tags.** Keep each complete thought
+  in one beat and separate beats with whitespace. Fighting the model with `<break>` tags
+  sounds halting.
 - **Audio is mono.** Don't splice a stereo clip in front of a mono voice track — it
   garbles. Force every audio input to mono before concatenating.
 - **Validate every visual by eye.** Never trust a filename or a thumbnail. Open it and
