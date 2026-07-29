@@ -79,8 +79,11 @@ agent:
   overload_retry_delay_ms: 45000
   no_progress_spend_limit_usd: 3
   resume_orphaned_sessions: true
-  max_session_tokens: 25000000
-  max_session_token_override_label: allow-large-session
+  # No per-session token ceiling. Billing is subscription-based, so a token cap
+  # buys nothing and only kills near-complete sessions. Runaway protection comes
+  # from no_progress_spend_limit_usd, max_turns, no-progress parking, and
+  # provider capacity pauses instead. Leave max_session_tokens unset
+  # (0 = disabled). Do not reintroduce it.
   max_concurrent_agents_by_state:
     Merging: 1
   dispatch_priority_by_state:
@@ -165,7 +168,7 @@ server:
 budget:
   # Disabled to match every other project on this host: the fleet runs on a flat
   # Codex subscription, so USD caps are notional and park healthy work. Real
-  # brakes remain: no-progress parking, max_session_tokens, capacity pauses.
+  # brakes remain: no-progress parking, max_turns, capacity pauses.
   # billing_mode stays `metered` even though caps are off: it is what keeps
   # agent.no_progress_spend_limit_usd an enforced brake that parks a runaway
   # session, rather than advisory telemetry. Doctor's "inert budget" warning on
