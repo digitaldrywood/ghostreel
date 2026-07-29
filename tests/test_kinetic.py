@@ -16,8 +16,11 @@ class KineticStylesTests(unittest.TestCase):
 
         self.assertIsNotNone(hidden_scene)
         self.assertIsNotNone(visible_scene)
+        transition = re.search(r"(?:^|;)transition:([^;]+)", hidden_scene.group(1))
+
+        self.assertIsNotNone(transition)
         self.assertIn("visibility:hidden", hidden_scene.group(1))
-        self.assertIn("transition:opacity .34s ease", hidden_scene.group(1))
+        self.assertEqual("opacity .34s ease", transition.group(1))
         self.assertIn("visibility:visible", visible_scene.group(1))
 
 
