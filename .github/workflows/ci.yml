@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    name: CI
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Mirrors gate.run in detent.yaml. Keep the two in sync: Detent runs this
+      # same sequence locally in the worktree before it will promote an issue.
+      - name: Python syntax
+        run: python3 -m compileall -q src
+
+      - name: Shell syntax
+        run: for f in ghostreel.sh src/*.sh; do bash -n "$f"; done
+
+      - name: ESM parse
+        run: node --check src/record_html.mjs
+
+      - name: Example intake/scenes are valid JSON
+        run: |
+          for f in examples/*.json; do
+            python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$f"
+          done
+
+      - name: Tests
+        run: |
+          if [ -d tests ]; then
+            python3 -m unittest discover -s tests
+          else
+            echo "no tests/ directory on this ref; skipping"
+          fi
