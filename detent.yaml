@@ -123,25 +123,23 @@ codex:
     networkAccess: true
 gate:
   kind: command
-  # ghostreel has no test suite, no Makefile, and no CI workflow (verified
-  # 2026-07-28: no .github/ directory, no branch protection on main). The gate
-  # below is the strongest deterministic check that runs in a fresh worktree
+  # This command is the local counterpart of .github/workflows/ci.yml. It runs
   # without API keys, network, or the 326MB Kokoro model: Python syntax across
   # src/, shell syntax on every script, ESM parse of the Playwright recorder,
-  # and JSON validity of every example intake/scenes file.
+  # JSON validity of every example intake/scenes file, and the stdlib unittest
+  # suite under tests/.
   #
   # It is deliberately cheap. The real end-to-end signal is the free rough cut
   # (`./ghostreel.sh --rough`), which WORKFLOW.md requires by hand for any change
   # touching the pipeline, beat schema, TTS, or cue sync — it needs Kokoro,
   # Playwright Chromium and ImageMagick, so it is not run on every PR.
   #
-  # The tests/ suite arrived with ghostreel#9 and is stdlib unittest, so it needs
-  # no pytest and no new dependency. It is guarded by a directory check because a
-  # branch cut before that merge has no tests/ and `unittest discover` would fail
-  # there, sending an otherwise-good issue to Rework.
+  # The tests/ suite uses stdlib unittest, so it needs no pytest or additional
+  # dependency. The directory guard keeps the shared command compatible with
+  # older branches that predate the suite.
   #
-  # ghostreel#13 replaces the script-lint echo with a real src/lint_script.py.
-  # Fold that command into this gate once it merges.
+  # Narration-specific linting runs inside src/run.sh and has unit coverage in
+  # tests/test_lint_script.py; this repository-wide gate exercises that suite.
   run: sh -c 'set -e; python3 -m compileall -q src; for f in ghostreel.sh src/*.sh; do bash -n "$f"; done; node --check src/record_html.mjs; for f in examples/*.json; do python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$f"; done; if [ -d tests ]; then python3 -m unittest discover -s tests; fi'
   require_automated_review: false
   # `CI` is the job name in .github/workflows/ci.yml, which mirrors gate.run
@@ -153,9 +151,9 @@ gate:
     - CI
   ci_failure_action: rework
   transient_ci_retry_limit: 2
-  # Left off: the static gate is cheap and the repo has no test suite for a
-  # validator verdict to corroborate. Enable it (and re-add model/min_score/
-  # block_on) once ghostreel#13 lands a real lint gate worth scoring against.
+  # Left off: the deterministic CI and unit-test gate does not need a separate
+  # model-scored validator. Enable it only if the project adopts a review signal
+  # that benefits from an additional validator verdict.
   validator:
     enabled: false
 plan:
