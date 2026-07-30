@@ -2,7 +2,9 @@
 
 You are helping a human build a video with the *video as code* method. This file is the
 machine-readable contract. Read `README.md`, `docs/the-method.md`, and
-`docs/writing-for-the-ear.md` first.
+`docs/writing-for-the-ear.md` first. When the input is a directory or pull request of
+Markdown that should become several episodes, also follow
+`docs/doc-set-to-video-series.md` before writing any episode script.
 
 ## The one rule
 
@@ -90,6 +92,11 @@ anywhere inside that paragraph.
 - Never concatenate a stereo clip onto the mono voice track.
 
 ## Files to use
+
+**Document set → video series:** follow `docs/doc-set-to-video-series.md` to inventory the
+fixed source snapshot, get the series outline approved, write and approve each episode as
+prose, attach paragraph-level source references, and approve source-linked storyboard dumps.
+Only then hand each episode to the explainer pipeline below.
 
 **Vertical reel (fastest path):** `./ghostreel.sh --rough <intake.json>` for a free preview,
 then `./ghostreel.sh <intake.json>` for the paid final. It chains voice → images → music →
