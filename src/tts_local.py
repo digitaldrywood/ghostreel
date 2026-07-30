@@ -28,6 +28,16 @@ transcript) — fine for reviewing flow; the paid pass gets exact alignment.
 """
 import json, os, re, shutil, subprocess, sys, tempfile
 
+from tts_common import (
+    ScriptFormatError,
+    approximate_track,
+    build_dialogue_groups,
+    build_transcript,
+    interleave_dialogue,
+    is_dialogue,
+    narrator_outputs,
+    stitch_audio,
+)
 from voices import voice_details
 
 KOKORO_DIR = os.environ.get("KOKORO_DIR", os.path.expanduser("~/.local/share/kokoro-tts"))
@@ -41,41 +51,9 @@ PAUSE_SECONDS = {"clause": 0.10, "sentence": 0.21, "beat": 0.66}
 SILENCE_THRESHOLD = 0.04
 
 
-def build_transcript(beats):
-    """Join every beat for one continuous read and retain its character span."""
-    full, spans = "", []
-    for i, beat in enumerate(beats):
-        say = beat["say"].strip()
-        if i:
-            full += "\n"
-        start = len(full)
-        full += say
-        spans.append((start, len(full)))
-    return full, spans
-
-
 def approximate_timings(text, spans, duration):
     """Map transcript character positions onto the continuous audio duration."""
-    scale = duration / len(text) if text else 0.0
-    timing = {
-        "duration": round(duration, 3),
-        "beats": [
-            {
-                "audio_start": round(start * scale, 3),
-                "audio_end": round(end * scale, 3),
-            }
-            for start, end in spans
-        ],
-    }
-    words = [
-        {
-            "w": match.group().strip(".,!?;:"),
-            "start": round(match.start() * scale, 3),
-            "end": round(match.end() * scale, 3),
-        }
-        for match in re.finditer(r"\S+", text)
-    ]
-    return words, timing
+    return narrator_outputs(approximate_track(text, spans, duration))
 
 
 def pause_boundaries(text, spans):
@@ -231,14 +209,18 @@ def dur(path):
     return float(out.stdout.strip() or 0.0)
 
 
-def make_kokoro():
+def load_kokoro_engine():
     reexec_into_kokoro_venv()
     import logging
     logging.getLogger("kokoro_onnx").setLevel(logging.WARNING)
     import soundfile as sf
     from kokoro_onnx import Kokoro
-    k = Kokoro(KOKORO_MODEL, KOKORO_VOICES)
-    voice = os.environ.get("KOKORO_VOICE", "am_michael")
+    return Kokoro(KOKORO_MODEL, KOKORO_VOICES), sf
+
+
+def make_kokoro(voice=None, engine=None):
+    k, sf = engine or load_kokoro_engine()
+    voice = voice or os.environ.get("KOKORO_VOICE", "am_michael")
     try:
         language, _ = voice_details(voice)
     except ValueError as exc:
@@ -270,25 +252,49 @@ def main():
     if len(sys.argv) < 3:
         sys.exit("usage: tts_local.py <script.json> <run_dir>")
     engine = pick_engine()
-    speak = make_kokoro() if engine == "kokoro" else make_piper()
-
-    beats = json.load(open(sys.argv[1]))["beats"]
+    document = json.load(open(sys.argv[1]))
+    beats = document["beats"]
     run = sys.argv[2]
     os.makedirs(os.path.join(run, "audio"), exist_ok=True)
 
-    text, spans = build_transcript(beats)
-    with tempfile.TemporaryDirectory() as tmp:
-        wav = os.path.join(tmp, "vo.wav")
-        speak(text, wav)
-        shape_pauses(wav, text, spans)
-        d = dur(wav)
+    if is_dialogue(document):
+        if engine != "kokoro":
+            sys.exit("error: dialogue rough cuts require Kokoro for two local voices")
+        try:
+            groups = build_dialogue_groups(document, "local_voice")
+        except ScriptFormatError as error:
+            sys.exit(f"error: {error}")
+        tracks = {}
+        source_paths = {}
+        kokoro_engine = load_kokoro_engine()
+        with tempfile.TemporaryDirectory() as tmp:
+            for index, (speaker, group) in enumerate(groups.items()):
+                wav = os.path.join(tmp, f"speaker-{index}.wav")
+                make_kokoro(group["voice"], kokoro_engine)(group["text"], wav)
+                shape_pauses(wav, group["text"], group["spans"])
+                duration = dur(wav)
+                tracks[speaker] = approximate_track(
+                    group["text"], group["spans"], duration
+                )
+                source_paths[speaker] = wav
+            words, timing, segments = interleave_dialogue(beats, groups, tracks)
+            stitch_audio(
+                source_paths, segments, os.path.join(run, "audio", "vo.mp3")
+            )
+    else:
+        speak = make_kokoro() if engine == "kokoro" else make_piper()
+        text, spans = build_transcript(beats)
+        with tempfile.TemporaryDirectory() as tmp:
+            wav = os.path.join(tmp, "vo.wav")
+            speak(text, wav)
+            shape_pauses(wav, text, spans)
+            duration = dur(wav)
 
-        # Single synthesized WAV -> vo.mp3 (mono 44.1k, same contract as the paid pass).
-        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", wav,
-                        "-ac", "1", "-ar", "44100",
-                        os.path.join(run, "audio", "vo.mp3")], check=True)
-
-    words, timing = approximate_timings(text, spans, d)
+            # Single synthesized WAV -> vo.mp3 (mono 44.1k, same contract as paid TTS).
+            subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", wav,
+                            "-ac", "1", "-ar", "44100",
+                            os.path.join(run, "audio", "vo.mp3")], check=True)
+        words, timing = approximate_timings(text, spans, duration)
 
     json.dump(words, open(os.path.join(run, "audio", "words.json"), "w"), indent=1)
     json.dump(timing, open(os.path.join(run, "audio", "timing.json"), "w"), indent=1)

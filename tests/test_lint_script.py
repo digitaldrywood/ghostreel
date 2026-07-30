@@ -135,6 +135,101 @@ class LintScriptTests(unittest.TestCase):
         self.assertIn("[spoken-symbol] at beat 1", stdout)
         self.assertIn("[fake-profound-kicker] at beat 1", stdout)
 
+    def test_dialogue_scenes_pass_the_same_full_gate(self):
+        sentences = PASSING_NARRATION.split(". ")
+        first = ". ".join(sentences[:5]) + "."
+        second = ". ".join(sentences[5:])
+        with tempfile.TemporaryDirectory() as temp_dir:
+            scenes = Path(temp_dir) / "dialogue.json"
+            scenes.write_text(
+                json.dumps(
+                    {
+                        "format": "dialogue",
+                        "speakers": {"host": {}, "guest": {}},
+                        "beats": [
+                            {
+                                "speaker": "host",
+                                "say": first,
+                                "show": {"type": "text", "lines": ["FIRST"]},
+                            },
+                            {
+                                "speaker": "guest",
+                                "say": second,
+                                "show": {"type": "text", "lines": ["SECOND"]},
+                            },
+                        ],
+                    }
+                )
+            )
+
+            return_code, stdout, stderr = self.call_main(scenes)
+
+        self.assertEqual(return_code, 0, stdout + stderr)
+        self.assertIn("Mode: scenes.json dialogue", stdout)
+        self.assertIn("Lint passed.", stdout)
+
+    def test_dialogue_rules_reject_affirmation_scripted_questions_and_banter(self):
+        narration = lint_script.NarrationInput(
+            segments=(
+                lint_script.Segment("beat 1 [host]", "Exactly, that is a great point."),
+                lint_script.Segment(
+                    "beat 2 [guest]",
+                    "What changes next? The same speaker answers immediately.",
+                ),
+            ),
+            shows=(),
+            mode="scenes.json dialogue",
+            enforce_writing_rules=True,
+            dialogue=True,
+        )
+
+        diagnostics = lint_script.dialogue_diagnostics(narration)
+
+        self.assertEqual(
+            {diagnostic.code for diagnostic in diagnostics},
+            {"reflexive-affirmation", "scripted-question", "filler-banter"},
+        )
+
+    def test_genuine_dialogue_question_is_not_a_rhetorical_setup(self):
+        narration = lint_script.NarrationInput(
+            segments=(
+                lint_script.Segment("beat 1 [host]", "What happens next?"),
+                lint_script.Segment("beat 2 [guest]", "The other speaker answers."),
+            ),
+            shows=(),
+            mode="scenes.json dialogue",
+            enforce_writing_rules=True,
+            dialogue=True,
+        )
+
+        codes = {diagnostic.code for diagnostic in lint_script.writing_diagnostics(narration)}
+
+        self.assertNotIn("rhetorical-setup", codes)
+
+    def test_dialogue_schema_rejects_unknown_beat_speaker(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            scenes = Path(temp_dir) / "dialogue.json"
+            scenes.write_text(
+                json.dumps(
+                    {
+                        "format": "dialogue",
+                        "speakers": {"host": {}, "guest": {}},
+                        "beats": [
+                            {
+                                "speaker": "third-host",
+                                "say": "A line with no configured voice.",
+                                "show": {"type": "text", "lines": ["UNKNOWN"]},
+                            }
+                        ],
+                    }
+                )
+            )
+
+            return_code, _, stderr = self.call_main(scenes)
+
+        self.assertEqual(return_code, 2)
+        self.assertIn("speaker must name one of", stderr)
+
     def test_duplicate_visual_is_rejected(self):
         shows = (
             (1, {"type": "capture", "path": "assets/shared.png"}),

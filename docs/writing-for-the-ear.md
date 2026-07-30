@@ -93,6 +93,29 @@ still responsible for catching equivalent phrasing.
 - Do not add `<break>` tags. Shape the sentence and whitespace so the continuous read has
   the intended pace.
 
+## Dialogue without filler
+
+Dialogue prose uses one complete thought per paragraph and prefixes it with a speaker tag,
+such as `[host]` or `[guest]`. The tag selects a voice and is not spoken. Use exactly two
+speaker names throughout the script.
+
+A genuine question hands uncertainty to the other speaker and ends the turn. Do not let a
+speaker ask a question and answer it in the same paragraph; that is a monologue wearing a
+dialogue costume. Clarifying questions may test an assumption, request an example, or name
+the point where a listener could lose the thread. Skeptical questions and disagreement are
+welcome only when the source material supports them. Never invent a position to make the
+exchange livelier.
+
+Cut conversational padding that does not change the listener's understanding:
+
+- reflexive affirmations such as `Right`, `Exactly`, and `Absolutely`;
+- praise for the prompt, including `Good question` and `That is a great point`;
+- handoffs such as `I was just going to say`;
+- rhetorical questions that the same speaker immediately answers.
+
+Each response should advance, qualify, or challenge the previous turn. If removing a line
+leaves the meaning unchanged, remove the line.
+
 ## Final read-through
 
 Before storyboard, read the joined narration aloud at a natural pace and confirm:
@@ -103,6 +126,8 @@ Before storyboard, read the joined narration aloud at a natural pace and confirm
 - every number, symbol, and acronym is written the way it should sound;
 - no parenthetical, page reference, or visual-only fragment asks the listener to read;
 - consecutive beats sound like one continuous performance rather than isolated clips.
+- dialogue questions create real handoffs, both speakers contribute substance, and neither
+  voice falls into affirmation or filler banter.
 
 If any check fails, revise the prose script and run the gate again. Re-segment only after
 it passes; do not move the problem downstream to storyboarding, voice generation, or

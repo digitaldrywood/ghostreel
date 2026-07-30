@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""tts.py — turn a script (list of `beats`, each with a `say`) into ONE continuous
-voiceover with word-level timings.
+"""tts.py — turn a script into a continuous voiceover with word-level timings.
 
-The whole point: send the entire script to the TTS in a SINGLE call, not beat by beat.
-Per-beat clips sound disjointed. We keep the character/word alignment so the assembler
-can cut each visual to the exact word it belongs to.
+Narrator scripts use one TTS call. Dialogue scripts use one call per speaker, then slice
+and interleave those two continuous performances in turn order. Neither path synthesizes
+individual beats. Character alignment keeps every visual and caption on the global track.
 
 Works for both flavors: an explainer `scenes.json` and a reel `intake.json` — both are
 just `{"beats":[{"say": "...", ...}]}` with an optional top-level `voice_id`.
@@ -17,23 +16,20 @@ Prints: VO_CHARS=<n>  VO_DURATION=<secs>
 Free rough cuts: use src/tts_local.py instead (Kokoro, local, $0) before you pay for this.
 This file is intentionally small and unframeworked — read it, adapt it.
 """
-import base64, json, os, sys, urllib.request, urllib.error
+import base64, json, os, sys, tempfile, urllib.request, urllib.error
+
+from tts_common import (
+    ScriptFormatError,
+    alignment_track,
+    build_dialogue_groups,
+    build_transcript,
+    interleave_dialogue,
+    is_dialogue,
+    narrator_outputs,
+    stitch_audio,
+)
 
 MODEL = "eleven_multilingual_v2"
-
-
-def build_transcript(beats):
-    """One continuous read. Blank line between beats — whitespace paces it. Never insert
-    <break> tags; they make the read halting. Returns (text, [(char_start,char_end)...])."""
-    full, spans = "", []
-    for i, b in enumerate(beats):
-        say = b["say"].strip()
-        if i:
-            full += "\n"
-        s = len(full)
-        full += say
-        spans.append((s, len(full)))
-    return full, spans
 
 
 def synth(text, voice, key):
@@ -59,47 +55,55 @@ def main():
     run = sys.argv[2]
     beats = doc["beats"]
     key = os.environ.get("ELEVENLABS_API_KEY") or sys.exit("error: ELEVENLABS_API_KEY not set (cp .envrc.example .envrc; direnv allow)")
-    voice = doc.get("voice_id") or os.environ.get("ELEVENLABS_VOICE_ID") or sys.exit("error: set voice_id in the script or ELEVENLABS_VOICE_ID")
-
-    text, spans = build_transcript(beats)
-    data = synth(text, voice, key)
-
     os.makedirs(os.path.join(run, "audio"), exist_ok=True)
-    open(os.path.join(run, "audio", "vo.mp3"), "wb").write(base64.b64decode(data["audio_base64"]))
+    output_path = os.path.join(run, "audio", "vo.mp3")
 
-    al = data.get("alignment") or data.get("normalized_alignment")
-    chars, cs, ce = al["characters"], al["character_start_times_seconds"], al["character_end_times_seconds"]
-    duration = ce[-1] if ce else 0.0
-
-    # per-beat windows from the char spans
-    timing = {"duration": round(duration, 3), "beats": []}
-    for (s, e) in spans:
-        e = min(e, len(chars))
-        timing["beats"].append({
-            "audio_start": round(cs[s] if s < len(cs) else 0.0, 3),
-            "audio_end": round(ce[e - 1] if 0 < e <= len(ce) else duration, 3),
-        })
-
-    # words for the SRT
-    words, cur, w0, w1 = [], "", None, None
-    for ch, a, b in zip(chars, cs, ce):
-        if ch.isspace():
-            if cur:
-                words.append({"w": cur, "start": round(w0, 3), "end": round(w1, 3)})
-                cur, w0, w1 = "", None, None
-        else:
-            if not cur:
-                w0 = a
-            cur += ch
-            w1 = b
-    if cur:
-        words.append({"w": cur, "start": round(w0, 3), "end": round(w1, 3)})
+    if is_dialogue(doc):
+        try:
+            groups = build_dialogue_groups(doc, "voice_id")
+        except ScriptFormatError as error:
+            sys.exit(f"error: {error}")
+        tracks = {}
+        source_paths = {}
+        with tempfile.TemporaryDirectory() as tmp:
+            for index, (speaker, group) in enumerate(groups.items()):
+                data = synth(group["text"], group["voice"], key)
+                source = os.path.join(tmp, f"speaker-{index}.mp3")
+                with open(source, "wb") as handle:
+                    handle.write(base64.b64decode(data["audio_base64"]))
+                alignment = data.get("alignment") or data.get("normalized_alignment")
+                if not alignment:
+                    sys.exit(f'error: TTS returned no alignment for speaker "{speaker}"')
+                try:
+                    tracks[speaker] = alignment_track(
+                        group["text"], group["spans"], alignment
+                    )
+                except ScriptFormatError as error:
+                    sys.exit(f"error: {error}")
+                source_paths[speaker] = source
+            words, timing, segments = interleave_dialogue(beats, groups, tracks)
+            stitch_audio(source_paths, segments, output_path)
+        character_count = sum(len(group["text"]) for group in groups.values())
+    else:
+        voice = doc.get("voice_id") or os.environ.get("ELEVENLABS_VOICE_ID") or sys.exit("error: set voice_id in the script or ELEVENLABS_VOICE_ID")
+        text, spans = build_transcript(beats)
+        data = synth(text, voice, key)
+        with open(output_path, "wb") as handle:
+            handle.write(base64.b64decode(data["audio_base64"]))
+        alignment = data.get("alignment") or data.get("normalized_alignment")
+        if not alignment:
+            sys.exit("error: TTS returned no alignment")
+        try:
+            words, timing = narrator_outputs(alignment_track(text, spans, alignment))
+        except ScriptFormatError as error:
+            sys.exit(f"error: {error}")
+        character_count = len(text)
 
     json.dump(words, open(os.path.join(run, "audio", "words.json"), "w"), indent=1)
     json.dump(timing, open(os.path.join(run, "audio", "timing.json"), "w"), indent=1)
-    print(f"VO -> {run}/audio/vo.mp3  ({len(text)} chars, {duration:.1f}s, {len(words)} words)", file=sys.stderr)
-    print(f"VO_CHARS={len(text)}")
-    print(f"VO_DURATION={duration:.3f}")
+    print(f"VO -> {run}/audio/vo.mp3  ({character_count} chars, {timing['duration']:.1f}s, {len(words)} words)", file=sys.stderr)
+    print(f"VO_CHARS={character_count}")
+    print(f"VO_DURATION={timing['duration']:.3f}")
 
 
 if __name__ == "__main__":

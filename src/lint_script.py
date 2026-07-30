@@ -13,6 +13,7 @@ import sys
 from typing import Any, Iterable
 
 from prose_script import ProseFormatError, parse_prose
+from tts_common import ScriptFormatError, is_dialogue, validate_dialogue
 
 
 WORD_RE = re.compile(r"\b\w+\b", re.UNICODE)
@@ -166,6 +167,29 @@ PATTERN_RULES = (
     ),
 )
 
+DIALOGUE_PATTERN_RULES = (
+    PatternRule(
+        "reflexive-affirmation",
+        "remove reflexive agreement and answer the substance",
+        re.compile(r"^(?:right|exactly|absolutely)(?:\W|$)", re.IGNORECASE),
+    ),
+    PatternRule(
+        "scripted-question",
+        "leave a genuine question for the other speaker to answer",
+        re.compile(r"\?[\"'”’)]*\s+\S"),
+    ),
+    PatternRule(
+        "filler-banter",
+        "remove filler banter and move directly to the point",
+        re.compile(
+            r"\b(?:(?:good|great)\W+question|glad\W+you\W+asked"
+            r"|that(?:['’]s|\W+is)\W+(?:a\W+)?(?:good|great)\W+point"
+            r"|i\W+was\W+just\W+going\W+to\W+say)\b",
+            re.IGNORECASE,
+        ),
+    ),
+)
+
 PAGE_REFERENCE_RE = re.compile(
     r"\b(?:as\W+)?(?:mentioned|shown|described|listed|noted)\W+"
     r"(?:above|below|earlier)\b",
@@ -195,6 +219,7 @@ class NarrationInput:
     shows: tuple[tuple[int, dict[str, Any]], ...]
     mode: str
     enforce_writing_rules: bool
+    dialogue: bool = False
 
     @property
     def text(self) -> str:
@@ -336,14 +361,28 @@ def load_input(path: Path, *, calibration: bool = False) -> NarrationInput:
             paragraphs = parse_prose(raw)
         except ProseFormatError as error:
             raise InputError(f"{path}: {error}") from error
+        tagged = [paragraph.speaker is not None for paragraph in paragraphs]
+        if any(tagged) and not all(tagged):
+            raise InputError(
+                f"{path}: dialogue prose must tag every paragraph with [speaker]"
+            )
+        dialogue = bool(tagged and all(tagged))
+        speakers = {paragraph.speaker for paragraph in paragraphs if paragraph.speaker}
+        if dialogue and len(speakers) != 2:
+            raise InputError(f"{path}: dialogue prose must use exactly two speaker tags")
         return NarrationInput(
             segments=tuple(
-                Segment(f"paragraph {index} at line {paragraph.line}", paragraph.text)
+                Segment(
+                    f"paragraph {index} at line {paragraph.line}"
+                    + (f" [{paragraph.speaker}]" if paragraph.speaker else ""),
+                    paragraph.text,
+                )
                 for index, paragraph in enumerate(paragraphs, start=1)
             ),
             shows=(),
-            mode="Markdown prose script",
+            mode="Markdown dialogue prose" if dialogue else "Markdown prose script",
             enforce_writing_rules=True,
+            dialogue=dialogue,
         )
 
     segments = tuple(
@@ -373,6 +412,12 @@ def load_scenes(raw: str, path: Path) -> NarrationInput:
         raise InputError(f"{path} must contain a top-level beats array")
     if not document["beats"]:
         raise InputError(f"{path} must contain at least one beat")
+    dialogue = is_dialogue(document)
+    if dialogue:
+        try:
+            validate_dialogue(document)
+        except ScriptFormatError as error:
+            raise InputError(f"{path}: {error}") from error
 
     segments = []
     shows = []
@@ -385,14 +430,17 @@ def load_scenes(raw: str, path: Path) -> NarrationInput:
         show = beat.get("show")
         if not isinstance(show, dict):
             raise InputError(f"{path}: beat {index} must contain a show object")
-        segments.append(Segment(f"beat {index}", say.strip()))
+        speaker = beat.get("speaker") if dialogue else None
+        label = f"beat {index}" + (f" [{speaker}]" if speaker else "")
+        segments.append(Segment(label, say.strip()))
         shows.append((index, show))
 
     return NarrationInput(
         segments=tuple(segments),
         shows=tuple(shows),
-        mode="scenes.json narration",
+        mode="scenes.json dialogue" if dialogue else "scenes.json narration",
         enforce_writing_rules=True,
+        dialogue=dialogue,
     )
 
 
@@ -453,6 +501,12 @@ def writing_diagnostics(narration: NarrationInput) -> list[Diagnostic]:
     for rule in PATTERN_RULES:
         for match in rule.expression.finditer(text):
             segment = segment_at(match.end() - 1, spans)
+            if (
+                narration.dialogue
+                and rule.code == "rhetorical-setup"
+                and segment.text.rstrip("\"'”’ )").endswith("?")
+            ):
+                continue
             diagnostics.append(
                 Diagnostic(
                     rule.code,
@@ -486,6 +540,17 @@ def writing_diagnostics(narration: NarrationInput) -> list[Diagnostic]:
                 Diagnostic(code, message, segment.label, segment.text)
             )
 
+    return diagnostics
+
+
+def dialogue_diagnostics(narration: NarrationInput) -> list[Diagnostic]:
+    diagnostics = []
+    for segment in narration.segments:
+        for rule in DIALOGUE_PATTERN_RULES:
+            if rule.expression.search(segment.text):
+                diagnostics.append(
+                    Diagnostic(rule.code, rule.label, segment.label, segment.text)
+                )
     return diagnostics
 
 
@@ -626,6 +691,8 @@ def main(argv: list[str] | None = None) -> int:
     diagnostics = rhythm_diagnostics(distribution)
     if narration.enforce_writing_rules:
         diagnostics.extend(writing_diagnostics(narration))
+    if narration.dialogue:
+        diagnostics.extend(dialogue_diagnostics(narration))
     diagnostics.extend(duplicate_visual_diagnostics(narration.shows))
 
     print_report(args.script, narration.mode, distribution)

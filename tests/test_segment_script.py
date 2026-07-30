@@ -29,6 +29,17 @@ class ProseScriptTests(unittest.TestCase):
         )
         self.assertEqual([paragraph.line for paragraph in paragraphs], [1, 4])
 
+    def test_dialogue_tags_are_metadata_not_spoken_text(self):
+        paragraphs = prose_script.parse_prose(
+            "[host] What changes first?\n\n[guest] The spoken answer stays here.\n"
+        )
+
+        self.assertEqual([paragraph.speaker for paragraph in paragraphs], ["host", "guest"])
+        self.assertEqual(
+            [paragraph.text for paragraph in paragraphs],
+            ["What changes first?", "The spoken answer stays here."],
+        )
+
     def test_visual_markdown_blocks_are_rejected(self):
         samples = (
             "# Heading",
@@ -51,7 +62,7 @@ class SegmentScriptTests(unittest.TestCase):
 
         self.assertEqual(result.preserved, 0)
         self.assertEqual(result.placeholders, 2)
-        self.assertEqual(result.document["format"], "explainer")
+        self.assertEqual(result.document["format"], "narrator")
         self.assertEqual(result.document["aspect"], "16:9")
         self.assertEqual(result.document["voice_id"], "")
         self.assertEqual(
@@ -62,6 +73,45 @@ class SegmentScriptTests(unittest.TestCase):
             result.document["beats"][0]["show"],
             result.document["beats"][1]["show"],
         )
+
+    def test_dialogue_segmentation_creates_two_speaker_configuration(self):
+        result = segment_script.segment(
+            "[host] What changes first?\n\n"
+            "[guest] The answer keeps one complete thought together.\n\n"
+            "[host] Where does the next cut land?\n"
+        )
+
+        self.assertEqual(result.document["format"], "dialogue")
+        self.assertEqual(set(result.document["speakers"]), {"host", "guest"})
+        self.assertEqual(
+            [beat["speaker"] for beat in result.document["beats"]],
+            ["host", "guest", "host"],
+        )
+        self.assertNotIn("[host]", result.document["beats"][0]["say"])
+
+    def test_dialogue_segmentation_requires_every_paragraph_tagged(self):
+        with self.assertRaisesRegex(
+            segment_script.SegmentationError, "tag every paragraph"
+        ):
+            segment_script.segment(
+                "[host] What changes first?\n\nThe answer lost its speaker.\n"
+            )
+
+    def test_tagged_prose_converts_existing_narrator_metadata_to_dialogue(self):
+        existing = {
+            "format": "narrator",
+            "voice_id": "old-narrator-voice",
+            "beats": [],
+        }
+
+        result = segment_script.segment(
+            "[host] What changes first?\n\n[guest] The answer follows.\n",
+            existing,
+        )
+
+        self.assertEqual(result.document["format"], "dialogue")
+        self.assertEqual(set(result.document["speakers"]), {"host", "guest"})
+        self.assertNotIn("voice_id", result.document)
 
     def test_moved_placeholders_are_renumbered_without_colliding(self):
         existing = segment_script.segment(

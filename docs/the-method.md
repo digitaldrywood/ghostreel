@@ -39,8 +39,9 @@ it to one visual. (`examples/narration.example.md` and `examples/scenes.example.
 3. **Storyboard** — print the SAY | SHOW pairs and approve them before spending anything.
 4. **Render** — build each visual. Captures, diagrams, terminals, and HTML for anything
    with text; AI images only for short emotional B-roll.
-5. **Voice** — send the *whole* script to the TTS in one continuous read and keep the
-   word-level timestamps. This is the only step that really costs money.
+5. **Voice** — send narrator scripts in one continuous read. For dialogue, send all turns
+   for each of the two speakers in one speaker-level read, then interleave the aligned
+   turns. Keep global word-level timestamps. This is the only step that really costs money.
 6. **Sync** — cut each visual in on its concept word; hold it long enough to read.
 7. **Assemble** — ffmpeg snaps the visuals to the voice on a frame grid.
 8. **Music + captions** — a low instrumental bed and a word-timed caption track.
@@ -59,7 +60,8 @@ to judge pacing and flow for real. Piper stays as the fallback.
 
 ## The rules that cost me real time to learn
 
-- One continuous read, never per-beat — per-beat clips sound disjointed.
+- One continuous narrator read, or one read per dialogue speaker, never per-beat —
+  per-beat clips sound disjointed.
 - Pace with sentence shape and whitespace between beats, never `<break>` tags.
 - Force audio to mono before concatenating, or the track garbles.
 - Validate every visual by eye against the line it's under.

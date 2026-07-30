@@ -75,13 +75,39 @@ paragraph with one visual, while existing single-sentence beats remain valid.
 }
 ```
 
-- The **narration** is every `say` paragraph joined together — one continuous read.
+- The **spoken script** is every `say` paragraph in beat order. Narrator delivery reads it
+  once; dialogue groups the same ordered turns into one read per speaker before interleaving.
 - The **visuals** are cut to the words using the voice's word-level timestamps.
 - `show.type` is one of: `capture` (a real screenshot/recording), `diagram` (Mermaid or
   HTML), `terminal`, `text` (a kinetic title card), or `image` (AI B-roll, used sparingly).
 
 See `examples/narration.example.md` for authoring and `examples/scenes.example.json` for
 the derived beat model and its visual assignments.
+
+### Narrator or dialogue
+
+`format` defaults to `narrator`. Set it to `dialogue` for two hosts, configure a local and
+paid voice for each host, and tag every beat with its speaker:
+
+```jsonc
+{
+  "format": "dialogue",
+  "speakers": {
+    "host":  { "local_voice": "af_heart", "voice_id": "REPLACE_WITH_HOST_VOICE_ID" },
+    "guest": { "local_voice": "am_michael", "voice_id": "REPLACE_WITH_GUEST_VOICE_ID" }
+  },
+  "beats": [
+    { "speaker": "host", "say": "Where does the listener lose the thread?", "show": {} },
+    { "speaker": "guest", "say": "The connection between these two steps needs more room.", "show": {} }
+  ]
+}
+```
+
+The local and paid paths synthesize all of one speaker's turns in a single call, do the
+same for the other speaker, then interleave the aligned turns. They never synthesize one
+line at a time. For prose-first authoring, prefix each paragraph with `[host]` or `[guest]`;
+segmentation removes the tag from `say` and writes it to `speaker`. Two-voice local rough
+cuts require Kokoro; the single-voice Piper fallback cannot represent both hosts.
 
 ---
 
@@ -98,7 +124,7 @@ narration.md
         │
         ├─ storyboard  print SAY | SHOW and approve it before spending anything
         ├─ render      build each visual (capture / diagram / terminal / image)
-        ├─ voice       ONE continuous TTS read with word-level timestamps
+        ├─ voice       one narrator read or one read per dialogue speaker, with timestamps
         ├─ sync        cut each visual to its cue word; enforce minimum dwell
         ├─ assemble    ffmpeg stitches visuals to the voice track (frame-snapped)
         ├─ music       a low instrumental bed under the whole thing
@@ -145,8 +171,8 @@ pacing and flow problems before a single credit gets spent.
 
 ## Hard-won rules (these cost me real time to learn)
 
-- **One continuous read, not per-beat.** Send the whole script to the TTS in one call and
-  use the returned word timestamps to cut visuals. Per-beat clips sound disjointed.
+- **One continuous read, not per-beat.** Narration uses one TTS call. Dialogue uses one
+  call per speaker and interleaves aligned turns. Per-beat clips sound disjointed.
 - **Pace with sentence shape and whitespace, not break tags.** Keep each complete thought
   in one beat and separate beats with whitespace. Fighting the model with `<break>` tags
   sounds halting.
@@ -205,6 +231,7 @@ loading the model, then audition as many as you like:
 ./ghostreel.sh --voices
 ./ghostreel.sh --sample af_heart
 KOKORO_VOICE=af_heart ./ghostreel.sh --rough examples/intake.example.json
+./ghostreel.sh --rough examples/intake.dialogue.example.json
 ```
 
 The [playable voice gallery](https://digitaldrywood.github.io/ghostreel/voices/) groups
@@ -262,9 +289,10 @@ ghostreel.sh                 one command: intake.json → finished vertical shor
 examples/intake.example.json a fun 6-beat sample reel (theme → short)
 examples/narration.example.md prose-first sample explainer narration
 examples/scenes.example.json a tiny sample explainer (long-form flavor)
+examples/intake.dialogue.example.json two-host vertical rough-cut example
 src/prose_script.py           strict one-thought-per-paragraph Markdown parser
 src/segment_script.py         prose → beats while preserving visual assignments
-src/tts.py                   ElevenLabs with-timestamps (one continuous read)  [paid]
+src/tts.py                   ElevenLabs with timestamps (narrator or two-host dialogue) [paid]
 src/tts_local.py             FREE local voice for rough cuts (Kokoro; Piper fallback)
 src/images.py                gpt-image B-roll (sequential, retrying)            [paid]
 src/music.py                 ElevenLabs Music instrumental bed                 [from plan]
