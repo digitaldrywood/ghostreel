@@ -7,26 +7,26 @@
   "music_prompt": "calm minimal modern tech underscore, no vocals, loopable",
   "beats": [
     {
-      "say": "Recording and editing is the bottleneck. Re-takes, color, audio, and cleanup all add work. So I stopped recording. The script became the whole video, and the edit became a diff.",
+      "say": "Recording creates hours of mechanical work. When the script becomes the source of truth, changing a sentence replaces retakes, timeline edits, audio cleanup, and every other correction that once began with another recording in front of the camera.",
       "show": { "type": "text", "lines": ["VIDEO AS", "CODE"] }
     },
     {
-      "say": "A beat keeps one complete thought together, even when it takes a few sentences. The visual can cut when its cue appears inside that paragraph.",
+      "say": "A beat keeps one complete spoken thought together. The visual can cut anywhere inside that thought when the matching words are spoken.",
       "cue": "visual can cut",
       "show": { "type": "terminal", "path": "assets/scenes-json.png" }
     },
     {
-      "say": "Each complete thought gets one visual, cut to the exact word.",
+      "say": "Every thought receives one visual. The timeline follows word-level timestamps from a single continuous voice reading, which keeps the narration connected while each visual arrives at its intended cue.",
       "cue": "one visual",
       "show": { "type": "diagram", "path": "assets/beat-model.png" }
     },
     {
-      "say": "An AI voice reads it, free tools assemble it, and a finished video falls out.",
+      "say": "Free tools assemble the rendered visuals, voice track, music, and captions. Because narration is generated once, its word timings can guide every cut without breaking the performance into isolated clips before the finished video is assembled.",
       "cue": "finished video",
       "show": { "type": "capture", "path": "assets/pipeline.png" }
     },
     {
-      "say": "No camera. No editor. Just a script you can change like code.",
+      "say": "The script remains easy for anyone to revise. A new render carries those revisions through the visual plan, the continuous voice, the assembly, the music bed, and the timed captions, leaving one source file that explains how the finished video was built.",
       "show": { "type": "text", "lines": ["NO CAMERA.", "NO EDITOR."] }
     }
   ]
