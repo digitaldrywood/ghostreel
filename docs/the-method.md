@@ -9,9 +9,10 @@ week, and most of that time was mechanical work a machine should be doing.
 
 ## The shift
 
-Stop recording. Make the **script** the whole video. Write it as data; let the machine
-read it, illustrate it, and assemble it. Your time goes to writing and reviewing — the
-parts that carry the message.
+Stop recording. Make the **script** the whole video. Write the narration as prose first;
+after it reads well on its own, derive the visual beats and let the machine read,
+illustrate, and assemble them. Your time goes to writing and reviewing — the parts that
+carry the message.
 
 > The script is the source of truth. The edit is a diff.
 
@@ -20,10 +21,10 @@ re-shoot. If a sentence is wrong, you fix a sentence.
 
 ## The unit: a beat
 
-A video is a list of **beats**. A beat is one complete spoken thought (`say`) and one
-visual (`show`). A thought normally spans two to five sentences, while a single sentence
-remains valid. String the `say` paragraphs together and you have the narration. Attach a
-visual to each thought and you have the video. (`examples/scenes.example.json`.)
+Write one complete spoken thought per paragraph in a plain Markdown file. A thought
+normally spans two to five sentences, while a single sentence remains valid. After the
+complete prose passes review, segmentation turns each paragraph into a **beat** and joins
+it to one visual. (`examples/narration.example.md` and `examples/scenes.example.json`.)
 
 ```jsonc
 { "say": "...", "cue": "concept word", "show": { "type": "diagram", "path": "..." } }
@@ -31,16 +32,18 @@ visual to each thought and you have the video. (`examples/scenes.example.json`.)
 
 ## The pipeline
 
-1. **Lint** — make sure the complete narration reads like *you*: varied sentence lengths,
-   one complete thought per beat, no filler.
-2. **Storyboard** — print the SAY | SHOW pairs and approve them before spending anything.
-3. **Render** — build each visual. Captures, diagrams, terminals, and HTML for anything
+1. **Lint** — make sure the complete prose reads like *you*: varied sentence lengths, one
+   complete thought per paragraph, no filler, and no visual grid competing for attention.
+2. **Segment** — derive one beat per approved paragraph while preserving compatible
+   visual assignments from the prior storyboard.
+3. **Storyboard** — print the SAY | SHOW pairs and approve them before spending anything.
+4. **Render** — build each visual. Captures, diagrams, terminals, and HTML for anything
    with text; AI images only for short emotional B-roll.
-4. **Voice** — send the *whole* script to the TTS in one continuous read and keep the
+5. **Voice** — send the *whole* script to the TTS in one continuous read and keep the
    word-level timestamps. This is the only step that really costs money.
-5. **Sync** — cut each visual in on its concept word; hold it long enough to read.
-6. **Assemble** — ffmpeg snaps the visuals to the voice on a frame grid.
-7. **Music + captions** — a low instrumental bed and a word-timed caption track.
+6. **Sync** — cut each visual in on its concept word; hold it long enough to read.
+7. **Assemble** — ffmpeg snaps the visuals to the voice on a frame grid.
+8. **Music + captions** — a low instrumental bed and a word-timed caption track.
 
 ## The cost
 

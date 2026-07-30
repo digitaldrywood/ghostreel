@@ -6,8 +6,10 @@ machine-readable contract. Read `README.md`, `docs/the-method.md`, and
 
 ## The one rule
 
-The `scenes.json` file is the source of truth. Everything is generated from it. When the
-human wants a change, edit `scenes.json` and re-run — never hand-edit the output.
+The prose script owns the spoken words during authoring. After it passes lint,
+`src/segment_script.py` updates `scenes.json`, which remains the source of truth for every
+rendering stage. Change narration in the prose file, change visual assignments in
+`scenes.json`, re-segment, and re-run. Never hand-edit downstream output.
 
 ## Data model
 
@@ -31,18 +33,20 @@ anywhere inside that paragraph.
 
 ## Pipeline order (do not reorder)
 
-1. `lint` — apply `docs/writing-for-the-ear.md` to the complete narration, not isolated
-   beats. The script must pass its rhythm, banned-word, banned-pattern, and spoken-form
-   checks before storyboard; also reject visuals reused across two beats.
-2. `storyboard` — emit a SAY | SHOW table; get human approval before spending money.
-3. `render` — produce each beat's visual file. Captures/diagrams/terminals/HTML for
+1. `lint` — apply `docs/writing-for-the-ear.md` to the complete prose script, not isolated
+   paragraphs. The narration must pass its rhythm, banned-word, banned-pattern, and
+   spoken-form checks before any visual grid exists.
+2. `segment` — turn each approved prose paragraph into one beat, preserve matched visual
+   assignments from an existing `scenes.json`, and reject visuals reused across beats.
+3. `storyboard` — emit a SAY | SHOW table; get human approval before spending money.
+4. `render` — produce each beat's visual file. Captures/diagrams/terminals/HTML for
    anything with text. AI images ONLY for short emotional B-roll.
-4. `voice` — ONE continuous TTS call for the whole script; keep the word timestamps.
-5. `sync` — set each visual's window from the cue word; enforce minimum dwell for each
+5. `voice` — ONE continuous TTS call for the whole script; keep the word timestamps.
+6. `sync` — set each visual's window from the cue word; enforce minimum dwell for each
    visual, independent of the beat's sentence count (diagrams ≥5s, stills ≥4s).
-6. `assemble` — ffmpeg, frame-snapped, mono voice track.
-7. `music` — instrumental bed, low volume, under the whole thing.
-8. `caption` — word-timed `.srt`; burn-in only for vertical shorts.
+7. `assemble` — ffmpeg, frame-snapped, mono voice track.
+8. `music` — instrumental bed, low volume, under the whole thing.
+9. `caption` — word-timed `.srt`; burn-in only for vertical shorts.
 
 ## Cost discipline
 
@@ -78,8 +82,10 @@ then `./ghostreel.sh <intake.json>` for the paid final. It chains voice → imag
 the pipeline doesn't care which one ran. `src/voices.py` owns the bundled voice catalog,
 local audition command, correct language codes, and generated sample gallery.
 
-**Explainer (long-form):** `src/tts.py` (voice), `src/record_html.mjs` (HTML→mp4),
-`src/assemble.sh` (assemble), `src/run.sh` (the whole order). Adapt them; keep the order.
+**Explainer (long-form):** write paragraphs like `examples/narration.example.md`, run
+`src/segment_script.py` to update the matching `scenes.json`, then use `src/tts.py`
+(voice), `src/record_html.mjs` (HTML→mp4), `src/assemble.sh` (assemble), and `src/run.sh`
+(the whole order). Adapt them; keep the order.
 
 **Keys:** read from the environment via direnv — `cp .envrc.example .envrc`, fill it,
 `direnv allow`. Scripts error clearly if a key is missing. Never write keys into the repo.

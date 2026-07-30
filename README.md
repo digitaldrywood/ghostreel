@@ -22,22 +22,24 @@ video with this method. Do this, in order:
 1. **Read `docs/the-method.md`** — the whole philosophy in one page.
 2. **Read `docs/writing-for-the-ear.md`** — this is the required narration gate. Apply it
    to the complete spoken script before you plan the storyboard.
-3. **Read `examples/scenes.example.json`** — this is the data model. A video is a list of
-   *beats*. Each beat pairs one complete spoken thought (`say`) with one visual (`show`).
-   A thought normally spans two to five sentences, though one sentence is valid too.
-4. **Ask the human for the topic and the script.** Help them write `say` passages in their
-   own voice, with one idea per beat and varied sentence length across the complete read.
-   Do not pad. Apply the banned words, banned patterns, and spoken-form checks in the
-   writing guide. Write it the way the human actually talks.
-5. **Plan the visuals.** For each beat pick a `show`: a real screen capture, a diagram, a
+3. **Read `examples/narration.example.md`** — this is the authoring format: plain prose,
+   one complete thought per paragraph, with no visual columns yet.
+4. **Ask the human for the topic and the script.** Help them write the continuous prose in
+   their own voice, with varied sentence length across the complete read. Do not pad.
+   Apply the banned words, banned patterns, and spoken-form checks in the writing guide,
+   then run `src/lint_script.py` against the Markdown file.
+5. **Segment the approved prose.** `src/segment_script.py` turns each paragraph into a
+   beat in `scenes.json`. On later runs it keeps visual assignments for paragraphs that
+   survived or received a close edit.
+6. **Plan the visuals.** For each beat pick a `show`: a real screen capture, a diagram, a
    terminal, or — sparingly — an AI image for emotional B-roll. **Anything with text or
    labels must be a real capture, a diagram, or HTML — never an AI image** (image models
    garble text).
-6. **Build a free rough cut first.** Generate the whole video with the local voice
+7. **Build a free rough cut first.** Generate the whole video with the local voice
    (`src/tts_local.py` — Kokoro, near-human, $0). Watch it end to end. Does the script
    breathe? Do the cuts land? Re-edit until it's right. It costs nothing to be wrong here.
-7. **Only then spend money.** Swap in the paid voice (ElevenLabs) for the final pass.
-8. **Follow the pipeline order** in `AGENTS.md` and `src/run.sh`. Use the scripts in
+8. **Only then spend money.** Swap in the paid voice (ElevenLabs) for the final pass.
+9. **Follow the pipeline order** in `AGENTS.md` and `src/run.sh`. Use the scripts in
    `src/` as the pattern; adapt them, don't fight them.
 
 Never invent prices, URLs, or facts. Never commit a real API key.
@@ -61,9 +63,9 @@ to the writing and the review — the parts that carry the message.
 
 ## The beat model
 
-A video is a JSON file: a list of **beats**. A beat is one complete spoken thought plus
-one visual. The thought can be a paragraph, while existing single-sentence beats remain
-valid.
+Narration starts as a plain Markdown file with one complete thought per paragraph. Once
+the prose passes lint, segmentation derives a JSON list of **beats**. Each beat pairs one
+paragraph with one visual, while existing single-sentence beats remain valid.
 
 ```jsonc
 {
@@ -78,26 +80,32 @@ valid.
 - `show.type` is one of: `capture` (a real screenshot/recording), `diagram` (Mermaid or
   HTML), `terminal`, `text` (a kinetic title card), or `image` (AI B-roll, used sparingly).
 
-That's the whole format. See `examples/scenes.example.json`.
+See `examples/narration.example.md` for authoring and `examples/scenes.example.json` for
+the derived beat model and its visual assignments.
 
 ---
 
 ## The pipeline
 
 ```
-scenes.json
+narration.md
    │
-   ├─ lint        sanity-check the script (your rhythm, spoken form, no recycled visuals)
-   ├─ storyboard  print a SAY | SHOW table and approve it before spending anything
-   ├─ render      build each beat's visual (capture / diagram / terminal / image)
-   ├─ voice       ONE continuous TTS read with word-level timestamps  ← the only real cost
-   ├─ sync        cut each visual to its cue word; enforce a minimum on-screen dwell
-   ├─ assemble    ffmpeg stitches visuals to the voice track (frame-snapped)
-   ├─ music       a low instrumental bed under the whole thing
-   └─ caption     word-timed .srt (or burned-in captions for vertical shorts)
+   ├─ lint        review the complete prose before any visual grid exists
+   └─ segment     derive beats and preserve compatible visual assignments
         │
         ▼
-     final.mp4
+   scenes.json
+        │
+        ├─ storyboard  print SAY | SHOW and approve it before spending anything
+        ├─ render      build each visual (capture / diagram / terminal / image)
+        ├─ voice       ONE continuous TTS read with word-level timestamps
+        ├─ sync        cut each visual to its cue word; enforce minimum dwell
+        ├─ assemble    ffmpeg stitches visuals to the voice track (frame-snapped)
+        ├─ music       a low instrumental bed under the whole thing
+        └─ caption     word-timed .srt (or burned-in captions for vertical shorts)
+             │
+             ▼
+          final.mp4
 ```
 
 Two flavors fall out of the same pipeline:
@@ -108,7 +116,7 @@ Two flavors fall out of the same pipeline:
 | Goal | sell a product | teach something |
 | Voice | a catalog voice | your own cloned voice |
 | Visuals | kinetic type + product photos | diagrams, captures, terminals |
-| Script | a flat list of lines | a structured `scenes.json` |
+| Script | a flat list of lines | prose Markdown → derived `scenes.json` |
 
 ---
 
@@ -225,8 +233,17 @@ Out comes `out/<title>/short.mp4`, a word-timed `short.srt`, and a `cheatsheet.h
 receipt that adds up exactly what the run cost. Edit `examples/intake.example.json` (or
 write your own) to change the video — that's the whole interface.
 
-For the long **explainer** flavor (faceless YouTube, diagrams/captures), see
-`src/run.sh` and `examples/scenes.example.json`.
+For the long **explainer** flavor, lint the prose before creating or showing a storyboard:
+
+```bash
+python3 src/lint_script.py examples/narration.example.md
+python3 src/segment_script.py examples/narration.example.md examples/scenes.example.json
+bash src/run.sh examples/narration.example.md examples/scenes.example.json
+```
+
+The first segmentation of a new script creates unique `ASSIGN VISUAL` cards. Replace
+those in `scenes.json`; later segmentation keeps matched assignments and drops a cue only
+when its verbatim phrase no longer exists in the edited paragraph.
 
 > **Dogfood:** this is the same pipeline used live in the "Video as Code" conference talk —
 > the audience picks a theme, ghostreel builds the short while the speaker talks, and the
@@ -243,7 +260,10 @@ docs/the-method.md           the philosophy, one page
 docs/writing-for-the-ear.md  required narration-writing gate
 ghostreel.sh                 one command: intake.json → finished vertical short + receipt
 examples/intake.example.json a fun 6-beat sample reel (theme → short)
+examples/narration.example.md prose-first sample explainer narration
 examples/scenes.example.json a tiny sample explainer (long-form flavor)
+src/prose_script.py           strict one-thought-per-paragraph Markdown parser
+src/segment_script.py         prose → beats while preserving visual assignments
 src/tts.py                   ElevenLabs with-timestamps (one continuous read)  [paid]
 src/tts_local.py             FREE local voice for rough cuts (Kokoro; Piper fallback)
 src/images.py                gpt-image B-roll (sequential, retrying)            [paid]
