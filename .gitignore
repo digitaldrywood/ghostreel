@@ -8,6 +8,7 @@
 out/
 *.mp4
 *.mp3
+!docs/voices/*.mp3
 *.wav
 *.webm
 *.srt

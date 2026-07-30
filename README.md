@@ -188,6 +188,39 @@ with `KOKORO_VOICE`, default `am_michael`). No Kokoro? It falls back to **Piper*
 robotic, but fine for checking flow (`pip install piper-tts`, set `PIPER_BIN` +
 `PIPER_VOICE`).
 
+### Choose a Kokoro voice
+
+Kokoro includes 54 local voices across nine language variants. List every id without
+loading the model, then audition as many as you like:
+
+```bash
+./ghostreel.sh --voices
+./ghostreel.sh --sample af_heart
+KOKORO_VOICE=af_heart ./ghostreel.sh --rough examples/intake.example.json
+```
+
+The [playable voice gallery](https://digitaldrywood.github.io/ghostreel/voices/) groups
+the same voices by language and gender. If the embedded players are unavailable, these
+links open the raw 64 kbps MP3 samples directly:
+
+| Language | Female samples | Male samples |
+|---|---|---|
+| American English | [af_alloy](docs/voices/af_alloy.mp3?raw=1), [af_aoede](docs/voices/af_aoede.mp3?raw=1), [af_bella](docs/voices/af_bella.mp3?raw=1), [af_heart](docs/voices/af_heart.mp3?raw=1), [af_jessica](docs/voices/af_jessica.mp3?raw=1), [af_kore](docs/voices/af_kore.mp3?raw=1), [af_nicole](docs/voices/af_nicole.mp3?raw=1), [af_nova](docs/voices/af_nova.mp3?raw=1), [af_river](docs/voices/af_river.mp3?raw=1), [af_sarah](docs/voices/af_sarah.mp3?raw=1), [af_sky](docs/voices/af_sky.mp3?raw=1) | [am_adam](docs/voices/am_adam.mp3?raw=1), [am_echo](docs/voices/am_echo.mp3?raw=1), [am_eric](docs/voices/am_eric.mp3?raw=1), [am_fenrir](docs/voices/am_fenrir.mp3?raw=1), [am_liam](docs/voices/am_liam.mp3?raw=1), [am_michael](docs/voices/am_michael.mp3?raw=1), [am_onyx](docs/voices/am_onyx.mp3?raw=1), [am_puck](docs/voices/am_puck.mp3?raw=1), [am_santa](docs/voices/am_santa.mp3?raw=1) |
+| British English | [bf_alice](docs/voices/bf_alice.mp3?raw=1), [bf_emma](docs/voices/bf_emma.mp3?raw=1), [bf_isabella](docs/voices/bf_isabella.mp3?raw=1), [bf_lily](docs/voices/bf_lily.mp3?raw=1) | [bm_daniel](docs/voices/bm_daniel.mp3?raw=1), [bm_fable](docs/voices/bm_fable.mp3?raw=1), [bm_george](docs/voices/bm_george.mp3?raw=1), [bm_lewis](docs/voices/bm_lewis.mp3?raw=1) |
+| Spanish | [ef_dora](docs/voices/ef_dora.mp3?raw=1) | [em_alex](docs/voices/em_alex.mp3?raw=1), [em_santa](docs/voices/em_santa.mp3?raw=1) |
+| French | [ff_siwis](docs/voices/ff_siwis.mp3?raw=1) | — |
+| Hindi | [hf_alpha](docs/voices/hf_alpha.mp3?raw=1), [hf_beta](docs/voices/hf_beta.mp3?raw=1) | [hm_omega](docs/voices/hm_omega.mp3?raw=1), [hm_psi](docs/voices/hm_psi.mp3?raw=1) |
+| Italian | [if_sara](docs/voices/if_sara.mp3?raw=1) | [im_nicola](docs/voices/im_nicola.mp3?raw=1) |
+| Japanese | [jf_alpha](docs/voices/jf_alpha.mp3?raw=1), [jf_gongitsune](docs/voices/jf_gongitsune.mp3?raw=1), [jf_nezumi](docs/voices/jf_nezumi.mp3?raw=1), [jf_tebukuro](docs/voices/jf_tebukuro.mp3?raw=1) | [jm_kumo](docs/voices/jm_kumo.mp3?raw=1) |
+| Brazilian Portuguese | [pf_dora](docs/voices/pf_dora.mp3?raw=1) | [pm_alex](docs/voices/pm_alex.mp3?raw=1), [pm_santa](docs/voices/pm_santa.mp3?raw=1) |
+| Mandarin Chinese | [zf_xiaobei](docs/voices/zf_xiaobei.mp3?raw=1), [zf_xiaoni](docs/voices/zf_xiaoni.mp3?raw=1), [zf_xiaoxiao](docs/voices/zf_xiaoxiao.mp3?raw=1), [zf_xiaoyi](docs/voices/zf_xiaoyi.mp3?raw=1) | [zm_yunjian](docs/voices/zm_yunjian.mp3?raw=1), [zm_yunxi](docs/voices/zm_yunxi.mp3?raw=1), [zm_yunxia](docs/voices/zm_yunxia.mp3?raw=1), [zm_yunyang](docs/voices/zm_yunyang.mp3?raw=1) |
+
+Regenerate all samples and the gallery page in one local command:
+
+```bash
+python3 src/voices.py gallery
+```
+
 Out comes `out/<title>/short.mp4`, a word-timed `short.srt`, and a `cheatsheet.html`
 receipt that adds up exactly what the run cost. Edit `examples/intake.example.json` (or
 write your own) to change the video — that's the whole interface.
