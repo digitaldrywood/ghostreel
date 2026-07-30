@@ -12,6 +12,8 @@ import statistics
 import sys
 from typing import Any, Iterable
 
+from prose_script import ProseFormatError, parse_prose
+
 
 WORD_RE = re.compile(r"\b\w+\b", re.UNICODE)
 SENTENCE_BOUNDARY_RE = re.compile(r"(?<=[.!?])(?:[\"'”’)\]]*)\s+")
@@ -308,15 +310,15 @@ def rhythm_diagnostics(distribution: Distribution) -> list[Diagnostic]:
     return diagnostics
 
 
-def load_input(path: Path) -> NarrationInput:
+def load_input(path: Path, *, calibration: bool = False) -> NarrationInput:
     try:
         raw = path.read_text(encoding="utf-8")
     except OSError as error:
         raise InputError(f"cannot read {path}: {error}") from error
 
-    if path.suffix.lower() == ".json":
-        return load_scenes(raw, path)
-    if path.suffix.lower() == ".md":
+    if calibration:
+        if path.suffix.lower() != ".md":
+            raise InputError("--calibration accepts a Markdown document")
         segments = markdown_prose_segments(raw)
         if not segments:
             raise InputError(f"{path} contains no prose paragraphs")
@@ -325,6 +327,23 @@ def load_input(path: Path) -> NarrationInput:
             shows=(),
             mode="Markdown calibration prose (rhythm only)",
             enforce_writing_rules=False,
+        )
+
+    if path.suffix.lower() == ".json":
+        return load_scenes(raw, path)
+    if path.suffix.lower() == ".md":
+        try:
+            paragraphs = parse_prose(raw)
+        except ProseFormatError as error:
+            raise InputError(f"{path}: {error}") from error
+        return NarrationInput(
+            segments=tuple(
+                Segment(f"paragraph {index} at line {paragraph.line}", paragraph.text)
+                for index, paragraph in enumerate(paragraphs, start=1)
+            ),
+            shows=(),
+            mode="Markdown prose script",
+            enforce_writing_rules=True,
         )
 
     segments = tuple(
@@ -586,6 +605,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Lint a prose narration script or scenes.json before storyboard."
     )
+    parser.add_argument(
+        "--calibration",
+        action="store_true",
+        help="measure a Markdown document's rhythm without narration-only rules",
+    )
     parser.add_argument("script", type=Path)
     return parser.parse_args(argv)
 
@@ -593,7 +617,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     try:
-        narration = load_input(args.script)
+        narration = load_input(args.script, calibration=args.calibration)
     except InputError as error:
         print(f"lint error: {error}", file=sys.stderr)
         return 2

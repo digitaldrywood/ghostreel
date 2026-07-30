@@ -37,11 +37,11 @@ class LintScriptTests(unittest.TestCase):
             text=True,
         )
 
-    def call_main(self, path):
+    def call_main(self, path, *options):
         stdout = io.StringIO()
         stderr = io.StringIO()
         with redirect_stdout(stdout), redirect_stderr(stderr):
-            return_code = lint_script.main([str(path)])
+            return_code = lint_script.main([*options, str(path)])
         return return_code, stdout.getvalue(), stderr.getvalue()
 
     def test_flat_reference_fixture_pins_distribution_arithmetic(self):
@@ -67,12 +67,35 @@ class LintScriptTests(unittest.TestCase):
         )
 
     def test_markdown_calibration_sample_passes_and_reports_distribution(self):
-        return_code, stdout, stderr = self.call_main(ROOT / "docs" / "the-method.md")
+        return_code, stdout, stderr = self.call_main(
+            ROOT / "docs" / "the-method.md", "--calibration"
+        )
 
         self.assertEqual(return_code, 0, stdout + stderr)
         self.assertIn("Mode: Markdown calibration prose (rhythm only)", stdout)
-        self.assertIn("Mean sentence length: 12.20 words", stdout)
+        self.assertIn("Mean sentence length: 13.61 words", stdout)
         self.assertIn("Lint passed.", stdout)
+
+    def test_markdown_narration_runs_the_full_writing_gate(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            script = Path(temp_dir) / "narration.md"
+            script.write_text(PASSING_NARRATION + "\n\nHere's the thing.\n")
+
+            return_code, stdout, stderr = self.call_main(script)
+
+        self.assertEqual(return_code, 1, stdout + stderr)
+        self.assertIn("Mode: Markdown prose script", stdout)
+        self.assertIn("[throat-clearing] at paragraph 2", stdout)
+
+    def test_markdown_narration_rejects_visual_layout_blocks(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            script = Path(temp_dir) / "narration.md"
+            script.write_text("# Production notes\n\nNarration starts here.\n")
+
+            return_code, _, stderr = self.call_main(script)
+
+        self.assertEqual(return_code, 2)
+        self.assertIn("headings, lists, quotes, and tables", stderr)
 
     def test_repository_scenes_example_passes(self):
         return_code, stdout, stderr = self.call_main(
@@ -265,7 +288,26 @@ class LintScriptTests(unittest.TestCase):
 
         self.assertEqual(result.returncode, 1)
         self.assertIn("==> 1. lint", result.stdout)
-        self.assertNotIn("==> 2. storyboard", result.stdout)
+        self.assertNotIn("==> 3. storyboard", result.stdout)
+
+    def test_prose_run_stops_before_segmentation_when_lint_fails(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = Path(temp_dir)
+            script = temp / "narration.md"
+            scenes = temp / "scenes.json"
+            script.write_text("Every sentence stays short. The rhythm never changes.\n")
+
+            result = subprocess.run(
+                ["bash", str(ROOT / "src" / "run.sh"), str(script), str(scenes)],
+                capture_output=True,
+                cwd=temp,
+                text=True,
+            )
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("==> 1. lint", result.stdout)
+        self.assertNotIn("==> 2. segment", result.stdout)
+        self.assertFalse(scenes.exists())
 
 
 if __name__ == "__main__":

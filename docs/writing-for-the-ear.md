@@ -3,9 +3,9 @@
 Narration passes once through a listener's attention. They cannot scan backward, inspect
 the punctuation, or reread a parenthetical. Write for that single forward pass.
 
-Apply this guide to every `say` value joined in order. A beat is a useful visual unit, but
-it is not an excuse to judge each sentence in isolation. The complete narration must pass
-this gate before the storyboard is approved.
+Apply this guide to the prose script as a whole, before it is segmented into `say` values.
+A future beat is a useful visual unit, but it is not an excuse to judge each sentence in
+isolation. The complete narration must pass this gate before any storyboard is shown.
 
 ## Vary the rhythm
 
@@ -104,5 +104,6 @@ Before storyboard, read the joined narration aloud at a natural pace and confirm
 - no parenthetical, page reference, or visual-only fragment asks the listener to read;
 - consecutive beats sound like one continuous performance rather than isolated clips.
 
-If any check fails, revise `scenes.json` and run the gate again. Do not move the problem
-downstream to voice generation or editing.
+If any check fails, revise the prose script and run the gate again. Re-segment only after
+it passes; do not move the problem downstream to storyboarding, voice generation, or
+editing.
