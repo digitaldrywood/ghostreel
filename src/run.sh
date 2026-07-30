@@ -65,7 +65,7 @@ echo "==> 7. assemble   — frame-snap the visuals and mux the mono voice track"
 echo "      bash src/assemble.sh $SCENES $OUT"
 
 echo "==> 8. music      — drop an instrumental bed at $OUT/music.mp3  [Lyria/ElevenLabs: pennies]"
-echo "==> 9. caption    — generate a word-timed .srt from $OUT/words.json"
+echo "==> 9. caption    — generate a word-timed .srt from $OUT/audio/words.json"
 
 echo
 echo "Order matters; the only real cost is step 5. See README.md and AGENTS.md."

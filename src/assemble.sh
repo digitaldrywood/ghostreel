@@ -4,8 +4,8 @@
 #   bash src/assemble.sh scenes.json out/
 #
 # Expects (produced by earlier stages):
-#   out/vo.mp3            the continuous voiceover            (src/tts.py)
-#   out/words.json        word-level timings                 (src/tts.py)
+#   out/audio/vo.mp3      the continuous voiceover            (src/tts.py)
+#   out/audio/words.json  word-level timings                  (src/tts.py)
 #   out/render/NN.png     one rendered visual per beat, 0-indexed  (your render step)
 #   out/music.mp3         optional instrumental bed
 #
@@ -26,7 +26,7 @@ mkdir -p "$OUT/seg"
 # Walk words.json in order, assigning N words to each beat (N = words in that beat's say).
 # A beat starts at its cue word if given, else its first word. It holds until the next
 # beat starts. Output: "index start duration" lines.
-python3 - "$SCENES" "$OUT/words.json" > "$OUT/windows.txt" <<'PY'
+python3 - "$SCENES" "$OUT/audio/words.json" > "$OUT/windows.txt" <<'PY'
 import json, sys
 scenes = json.load(open(sys.argv[1]))["beats"]
 words = json.load(open(sys.argv[2]))
@@ -69,11 +69,11 @@ ffmpeg -y -loglevel error -f concat -safe 0 -i "$OUT/concat.txt" -c copy "$OUT/v
 
 if [ -f "$OUT/music.mp3" ]; then
   # voice at full, music ducked under it; everything forced to mono so nothing garbles
-  ffmpeg -y -loglevel error -i "$OUT/visual.mp4" -i "$OUT/vo.mp3" -stream_loop -1 -i "$OUT/music.mp3" \
+  ffmpeg -y -loglevel error -i "$OUT/visual.mp4" -i "$OUT/audio/vo.mp3" -stream_loop -1 -i "$OUT/music.mp3" \
     -filter_complex "[1:a]aformat=channel_layouts=mono[v];[2:a]aformat=channel_layouts=mono,volume=0.10[m];[v][m]amix=inputs=2:duration=first[a]" \
     -map 0:v -map "[a]" -c:v copy -c:a aac -ac 1 -shortest -movflags +faststart "$OUT/final.mp4"
 else
-  ffmpeg -y -loglevel error -i "$OUT/visual.mp4" -i "$OUT/vo.mp3" \
+  ffmpeg -y -loglevel error -i "$OUT/visual.mp4" -i "$OUT/audio/vo.mp3" \
     -map 0:v -map 1:a -c:v copy -c:a aac -ac 1 -shortest -movflags +faststart "$OUT/final.mp4"
 fi
 
