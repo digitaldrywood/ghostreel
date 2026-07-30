@@ -28,6 +28,8 @@ transcript) — fine for reviewing flow; the paid pass gets exact alignment.
 """
 import json, os, re, shutil, subprocess, sys, tempfile
 
+from voices import voice_details
+
 KOKORO_DIR = os.environ.get("KOKORO_DIR", os.path.expanduser("~/.local/share/kokoro-tts"))
 KOKORO_PY = os.path.join(KOKORO_DIR, "venv/bin/python")
 KOKORO_MODEL = os.path.join(KOKORO_DIR, "kokoro-v1.0.onnx")
@@ -107,10 +109,14 @@ def make_kokoro():
     from kokoro_onnx import Kokoro
     k = Kokoro(KOKORO_MODEL, KOKORO_VOICES)
     voice = os.environ.get("KOKORO_VOICE", "am_michael")
+    try:
+        language, _ = voice_details(voice)
+    except ValueError as exc:
+        sys.exit(f"error: {exc}")
     speed = float(os.environ.get("KOKORO_SPEED", "1.0"))
 
     def speak(text, wav):
-        samples, sr = k.create(text, voice=voice, speed=speed, lang="en-us")
+        samples, sr = k.create(text, voice=voice, speed=speed, lang=language.espeak_code)
         sf.write(wav, samples, sr)
     return speak
 

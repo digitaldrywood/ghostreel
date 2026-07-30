@@ -4,12 +4,29 @@
 #
 #   ./ghostreel.sh --rough intake.json   # FREE preview (local Kokoro voice, placeholder cards)
 #   ./ghostreel.sh intake.json           # paid final (real voice + AI images + music)
+#   ./ghostreel.sh --voices               # list local Kokoro voices
+#   ./ghostreel.sh --sample af_heart      # generate and play one sample
 #
 # Keys come from the environment. Use direnv: `cp .envrc.example .envrc`, fill it, `direnv allow`.
 # (If you don't use direnv, this script will also source ./.envrc when present.)
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 cd "$HERE"
+
+case "${1:-}" in
+  --voices)
+    [ "$#" -eq 1 ] || { echo "usage: ./ghostreel.sh --voices"; exit 2; }
+    exec python3 src/voices.py list
+    ;;
+  --sample)
+    [ "$#" -eq 2 ] || { echo "usage: ./ghostreel.sh --sample <voice>"; exit 2; }
+    exec python3 src/voices.py sample "$2"
+    ;;
+  --voice-gallery)
+    [ "$#" -eq 1 ] || { echo "usage: ./ghostreel.sh --voice-gallery"; exit 2; }
+    exec python3 src/voices.py gallery
+    ;;
+esac
 
 ROUGH=0
 ARGS=()

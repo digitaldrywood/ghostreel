@@ -46,6 +46,10 @@ anywhere inside that paragraph.
 
 ## Cost discipline
 
+- Before the first local rough cut, run `./ghostreel.sh --voices`, offer the available
+  voice ids to the human, and ask which voice fits the video. Use
+  `./ghostreel.sh --sample <voice>` to audition finalists, then set `KOKORO_VOICE` to the
+  chosen id. Do not silently choose the `am_michael` default for them.
 - Always build a **rough cut with the free local voice first** (`src/tts_local.py` —
   Kokoro-82M, near-human, $0; falls back to Piper if Kokoro isn't installed). Let the
   human review flow and cuts. Only generate the paid voice after they approve.
@@ -71,7 +75,8 @@ then `./ghostreel.sh <intake.json>` for the paid final. It chains voice → imag
 **Local rough voice:** `src/tts_local.py` — Kokoro-first (KOKORO_DIR, default
 `~/.local/share/kokoro-tts`; KOKORO_VOICE, default `am_michael`), Piper fallback
 (PIPER_BIN + PIPER_VOICE). Same output contract as the paid `src/tts.py`, so the rest of
-the pipeline doesn't care which one ran.
+the pipeline doesn't care which one ran. `src/voices.py` owns the bundled voice catalog,
+local audition command, correct language codes, and generated sample gallery.
 
 **Explainer (long-form):** `src/tts.py` (voice), `src/record_html.mjs` (HTML→mp4),
 `src/assemble.sh` (assemble), `src/run.sh` (the whole order). Adapt them; keep the order.
