@@ -191,6 +191,64 @@ class LocalTtsTests(unittest.TestCase):
             self.assertEqual(["First", "Second"], [word["w"] for word in words])
             self.assertEqual(2.0, timing["duration"])
 
+    def test_dialogue_synthesizes_once_per_speaker_then_interleaves_turns(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = Path(temp_dir)
+            intake = temp / "intake.json"
+            output = temp / "out"
+            intake.write_text(
+                json.dumps(
+                    {
+                        "format": "dialogue",
+                        "speakers": {
+                            "host": {"local_voice": "af_heart"},
+                            "guest": {"local_voice": "am_michael"},
+                        },
+                        "beats": [
+                            {"speaker": "host", "say": "First host."},
+                            {"speaker": "guest", "say": "Guest answer."},
+                            {"speaker": "host", "say": "Second host."},
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            calls = []
+
+            def make_speaker(voice, _engine):
+                def speak(text, wav):
+                    calls.append((voice, text))
+                    Path(wav).write_bytes(b"wav")
+                return speak
+
+            with mock.patch.object(sys, "argv", ["tts_local.py", str(intake), str(output)]):
+                with mock.patch.object(tts_local, "pick_engine", return_value="kokoro"):
+                    with mock.patch.object(tts_local, "load_kokoro_engine", return_value=mock.Mock()):
+                        with mock.patch.object(tts_local, "make_kokoro", side_effect=make_speaker):
+                            with mock.patch.object(tts_local, "shape_pauses"):
+                                with mock.patch.object(tts_local, "dur", side_effect=[4.0, 2.0]):
+                                    with mock.patch.object(tts_local, "stitch_audio") as stitch:
+                                        with contextlib.redirect_stdout(io.StringIO()):
+                                            with contextlib.redirect_stderr(io.StringIO()):
+                                                tts_local.main()
+
+            self.assertEqual(
+                calls,
+                [
+                    ("af_heart", "First host.\nSecond host."),
+                    ("am_michael", "Guest answer."),
+                ],
+            )
+            self.assertEqual(
+                [segment["speaker"] for segment in stitch.call_args.args[1]],
+                ["host", "guest", "host"],
+            )
+            words = json.loads((output / "audio/words.json").read_text())
+            self.assertEqual(
+                [word["w"] for word in words],
+                ["First", "host", "Guest", "answer", "Second", "host"],
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

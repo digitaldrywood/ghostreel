@@ -1,6 +1,6 @@
 {
   "title": "What is video as code?",
-  "format": "explainer",
+  "format": "narrator",
   "aspect": "16:9",
   "resolution": "1080p",
   "voice_id": "REPLACE_WITH_YOUR_ELEVENLABS_VOICE_ID",

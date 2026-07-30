@@ -46,7 +46,8 @@ echo "==> 3. storyboard — confirm each beat's say pairs with the right show be
 python3 - "$SCENES" <<'PY'
 import json,sys
 for i,b in enumerate(json.load(open(sys.argv[1]))["beats"]):
-    print(f"  {i:02d}  SAY: {b['say']}")
+    speaker = f" [{b['speaker']}]" if b.get("speaker") else ""
+    print(f"  {i:02d}  SAY{speaker}: {b['say']}")
     print(f"      SHOW: {b['show']['type']:8} {b['show'].get('path', b['show'].get('lines',''))}")
 PY
 
@@ -56,7 +57,8 @@ echo "    AI images → only for short B-roll. (This step is yours to wire to yo
 echo "    example for a text card:"
 echo "      node src/record_html.mjs 'src/kinetic.html#NO%20CAMERA|NO%20EDITOR' $OUT/render/00.mp4 1920 1080 4"
 
-echo "==> 5. voice      — ONE continuous read + word timestamps   [\$ COSTS MONEY: the voice]"
+echo "==> 5. voice      — one narrator read or one read per dialogue speaker + timestamps"
+echo "                    [\$ COSTS MONEY: the voice]"
 echo "    rough cut?  use the FREE local Kokoro voice here and skip the cost until approved."
 echo "      python3 src/tts.py $SCENES $OUT"
 

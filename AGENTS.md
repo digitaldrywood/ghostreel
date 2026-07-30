@@ -13,11 +13,27 @@ rendering stage. Change narration in the prose file, change visual assignments i
 
 ## Data model
 
-A video is `{ "format", "aspect", "voice_id", "beats": [...] }`. Each beat:
+A narrator video is `{ "format": "narrator", "aspect", "voice_id", "beats": [...] }`;
+`format` may be omitted for backward compatibility. A dialogue video uses:
+
+```jsonc
+{
+  "format": "dialogue",
+  "speakers": {
+    "host":  { "local_voice": "af_heart", "voice_id": "..." },
+    "guest": { "local_voice": "am_michael", "voice_id": "..." }
+  },
+  "beats": [...]
+}
+```
+
+Dialogue has exactly two speakers with distinct voices. Every dialogue beat includes a
+`speaker` matching one of those names. Each beat otherwise remains:
 
 ```jsonc
 {
   "say":  "one complete spoken thought",  // required; one to five sentences
+  "speaker": "host",                      // required only for dialogue
   "cue":  "verbatim substring of say",    // optional; cut anywhere inside the thought
   "show": {
     "type": "capture|diagram|terminal|text|image",
@@ -41,7 +57,8 @@ anywhere inside that paragraph.
 3. `storyboard` — emit a SAY | SHOW table; get human approval before spending money.
 4. `render` — produce each beat's visual file. Captures/diagrams/terminals/HTML for
    anything with text. AI images ONLY for short emotional B-roll.
-5. `voice` — ONE continuous TTS call for the whole script; keep the word timestamps.
+5. `voice` — one continuous TTS call for a narrator, or one call per dialogue speaker;
+   interleave dialogue turns from those speaker-level reads and keep global word timestamps.
 6. `sync` — set each visual's window from the cue word; enforce minimum dwell for each
    visual, independent of the beat's sentence count (diagrams ≥5s, stills ≥4s).
 7. `assemble` — ffmpeg, frame-snapped, mono voice track.
@@ -51,7 +68,8 @@ anywhere inside that paragraph.
 ## Cost discipline
 
 - Before the first local rough cut, run `./ghostreel.sh --voices`, offer the available
-  voice ids to the human, and ask which voice fits the video. Use
+  voice ids to the human, and ask which voice fits the video (two distinct voices for
+  dialogue). Use
   `./ghostreel.sh --sample <voice>` to audition finalists, then set `KOKORO_VOICE` to the
   chosen id. Do not silently choose the `am_michael` default for them.
 - Always build a **rough cut with the free local voice first** (`src/tts_local.py` —
@@ -67,6 +85,8 @@ anywhere inside that paragraph.
 - Never AI-generate a diagram, code block, UI, or any labeled image.
 - Never invent a price, URL, hour, or claim. Ask or leave it out.
 - Never insert `<break>` tags to fix pacing — use sentence shape and whitespace.
+- Never synthesize per beat. Narration is one call; dialogue is exactly one call per
+  speaker before turns are interleaved.
 - Never concatenate a stereo clip onto the mono voice track.
 
 ## Files to use
@@ -80,10 +100,12 @@ then `./ghostreel.sh <intake.json>` for the paid final. It chains voice → imag
 `~/.local/share/kokoro-tts`; KOKORO_VOICE, default `am_michael`), Piper fallback
 (PIPER_BIN + PIPER_VOICE). Same output contract as the paid `src/tts.py`, so the rest of
 the pipeline doesn't care which one ran. `src/voices.py` owns the bundled voice catalog,
-local audition command, correct language codes, and generated sample gallery.
+local audition command, correct language codes, and generated sample gallery. Dialogue
+rough cuts require Kokoro because the Piper fallback configures only one voice.
 
-**Explainer (long-form):** write paragraphs like `examples/narration.example.md`, run
-`src/segment_script.py` to update the matching `scenes.json`, then use `src/tts.py`
+**Explainer (long-form):** write paragraphs like `examples/narration.example.md`; dialogue
+prefixes each paragraph with `[speaker]`, which becomes beat metadata and is never spoken.
+Run `src/segment_script.py` to update the matching `scenes.json`, then use `src/tts.py`
 (voice), `src/record_html.mjs` (HTML→mp4), `src/assemble.sh` (assemble), and `src/run.sh`
 (the whole order). Adapt them; keep the order.
 

@@ -1,0 +1,86 @@
+{
+  "title": "Two Ways to Read a Draft",
+  "format": "dialogue",
+  "aspect": "9:16",
+  "speakers": {
+    "host": {
+      "local_voice": "af_heart",
+      "voice_id": "REPLACE_WITH_HOST_ELEVENLABS_VOICE_ID"
+    },
+    "guest": {
+      "local_voice": "am_michael",
+      "voice_id": "REPLACE_WITH_GUEST_ELEVENLABS_VOICE_ID"
+    }
+  },
+  "style": {
+    "bg": "radial-gradient(120% 80% at 50% 14%,#28305f 0%,#11152f 48%,#05060d 100%)",
+    "fxcolors": ["#ffd166", "#62d9ff", "#9cffac", "#ffffff"],
+    "fx": "subtle"
+  },
+  "beats": [
+    {
+      "speaker": "host",
+      "say": "When two people review the same draft, what should the first speaker ask before either voice starts explaining?",
+      "show": {
+        "type": "text",
+        "lines": [{"t": "START WITH", "cls": "big cream glow"}, {"t": "THE QUESTION", "cls": "huge cyan glow"}]
+      }
+    },
+    {
+      "speaker": "guest",
+      "say": "Ask where the listener is most likely to lose the thread. That question forces the explanation to begin with the difficult connection, while the rest of the material can wait until the listener has a reason to care about each detail.",
+      "show": {
+        "type": "text",
+        "lines": [{"t": "FIND THE", "cls": "big cream glow"}, {"t": "LOST THREAD", "cls": "huge gold glow"}]
+      }
+    },
+    {
+      "speaker": "host",
+      "say": "How does the second voice help?",
+      "show": {
+        "type": "text",
+        "lines": [{"t": "WHY TWO", "cls": "big cream glow"}, {"t": "VOICES?", "cls": "huge cyan glow"}]
+      }
+    },
+    {
+      "speaker": "guest",
+      "say": "A distinct voice gives the listener a clean signal that the conversation has changed direction. The handoff also creates room for a new example or qualification without making one speaker carry every transition inside a single unbroken explanation.",
+      "show": {
+        "type": "text",
+        "lines": [{"t": "A CLEAN", "cls": "big cream glow"}, {"t": "HANDOFF", "cls": "huge green glow"}]
+      }
+    },
+    {
+      "speaker": "host",
+      "say": "Can the hosts disagree?",
+      "show": {
+        "type": "text",
+        "lines": [{"t": "REAL", "cls": "big cream glow"}, {"t": "PUSHBACK?", "cls": "huge gold glow"}]
+      }
+    },
+    {
+      "speaker": "guest",
+      "say": "They can challenge an assumption when the source supports that challenge, because useful tension helps the listener see where a decision carries risk, but neither host should invent a position merely to make the exchange sound lively.",
+      "show": {
+        "type": "text",
+        "lines": [{"t": "SUPPORTED", "cls": "big cream glow"}, {"t": "DISAGREEMENT", "cls": "huge cyan glow"}]
+      }
+    },
+    {
+      "speaker": "host",
+      "say": "What keeps the exchange from sounding staged?",
+      "show": {
+        "type": "text",
+        "lines": [{"t": "CUT THE", "cls": "big cream glow"}, {"t": "FILLER", "cls": "huge gold glow"}]
+      }
+    },
+    {
+      "speaker": "guest",
+      "say": "Every turn needs to add a fact, sharpen a question, qualify a claim, or connect two ideas that were difficult to hold together, so greetings and automatic agreement disappear before the voices ever reach the microphone.",
+      "show": {
+        "type": "text",
+        "lines": [{"t": "EVERY TURN", "cls": "big cream glow"}, {"t": "ADDS MEANING", "cls": "huge green glow"}]
+      }
+    }
+  ]
+}

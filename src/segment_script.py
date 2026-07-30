@@ -133,6 +133,30 @@ def segment(raw: str, existing: dict[str, Any] | None = None) -> SegmentationRes
     except ProseFormatError as error:
         raise SegmentationError(str(error)) from error
 
+    tagged = [paragraph.speaker is not None for paragraph in parsed]
+    if any(tagged) and not all(tagged):
+        raise SegmentationError(
+            "dialogue prose must tag every paragraph with [speaker]"
+        )
+    dialogue = bool(tagged and all(tagged))
+    speaker_names = tuple(
+        dict.fromkeys(
+            paragraph.speaker for paragraph in parsed if paragraph.speaker
+        )
+    )
+    if dialogue and len(speaker_names) != 2:
+        raise SegmentationError("dialogue prose must use exactly two speaker tags")
+    if existing and existing.get("format") == "dialogue" and not dialogue:
+        raise SegmentationError(
+            "dialogue scenes require [speaker] on every prose paragraph"
+        )
+    if dialogue and existing and isinstance(existing.get("speakers"), dict):
+        configured = set(existing["speakers"])
+        if configured != set(speaker_names):
+            raise SegmentationError(
+                "dialogue prose speaker tags must match the configured speakers"
+            )
+
     paragraphs = tuple(paragraph.text for paragraph in parsed)
     old_beats = list(existing.get("beats", [])) if existing else []
     matches = match_beats(paragraphs, old_beats)
@@ -152,8 +176,14 @@ def segment(raw: str, existing: dict[str, Any] | None = None) -> SegmentationRes
                 beat.pop("cue")
                 dropped_cues += 1
         beat["say"] = paragraph
-        # Keep the public schema easy to scan: narration first, then cue, then show.
+        if dialogue:
+            beat["speaker"] = parsed[index - 1].speaker
+        else:
+            beat.pop("speaker", None)
+        # Keep the public schema easy to scan: narration, speaker, cue, then show.
         ordered = {"say": beat.pop("say")}
+        if "speaker" in beat:
+            ordered["speaker"] = beat.pop("speaker")
         if "cue" in beat:
             ordered["cue"] = beat.pop("cue")
         ordered.update(beat)
@@ -162,8 +192,26 @@ def segment(raw: str, existing: dict[str, Any] | None = None) -> SegmentationRes
     require_unique_visuals(beats)
     if existing:
         document = {key: value for key, value in existing.items() if key != "beats"}
+        if dialogue:
+            document["format"] = "dialogue"
+            document.pop("voice_id", None)
+            if not isinstance(document.get("speakers"), dict):
+                document["speakers"] = {
+                    name: {"local_voice": "", "voice_id": ""}
+                    for name in speaker_names
+                }
     else:
-        document = {"format": "explainer", "aspect": "16:9", "voice_id": ""}
+        if dialogue:
+            document = {
+                "format": "dialogue",
+                "aspect": "16:9",
+                "speakers": {
+                    name: {"local_voice": "", "voice_id": ""}
+                    for name in speaker_names
+                },
+            }
+        else:
+            document = {"format": "narrator", "aspect": "16:9", "voice_id": ""}
     document["beats"] = beats
     return SegmentationResult(
         document=document,

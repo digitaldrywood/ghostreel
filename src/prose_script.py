@@ -10,12 +10,14 @@ import re
 BLOCK_MARKER_RE = re.compile(
     r"^(?:#{1,6}\s|>|[-*+]\s|\d+[.)]\s|\||-{3,}$|_{3,}$|\*{3,}$|<)"
 )
+SPEAKER_TAG_RE = re.compile(r"^\[([A-Za-z][A-Za-z0-9_-]*)\]\s+(.+)$")
 
 
 @dataclass(frozen=True)
 class Paragraph:
     line: int
     text: str
+    speaker: str | None = None
 
 
 class ProseFormatError(ValueError):
@@ -37,8 +39,14 @@ def parse_prose(raw: str) -> tuple[Paragraph, ...]:
     def flush() -> None:
         nonlocal lines, start_line
         if lines:
+            text = " ".join(line.strip() for line in lines)
+            match = SPEAKER_TAG_RE.match(text)
             paragraphs.append(
-                Paragraph(start_line, " ".join(line.strip() for line in lines))
+                Paragraph(
+                    start_line,
+                    match.group(2) if match else text,
+                    match.group(1) if match else None,
+                )
             )
         lines = []
         start_line = 0
