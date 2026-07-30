@@ -24,14 +24,14 @@ html,body{width:1080px;height:1920px;overflow:hidden;background:#05060c}
 }
 #fx{position:absolute;inset:0;z-index:6;pointer-events:none}
 
-/* ---- scenes: stacked, faded in/out by the timeline ---- */
+/* ---- scenes: stacked, cut out and faded in by the timeline ---- */
 .scene{
   position:absolute;inset:0;z-index:2;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:18px;padding:0 90px;text-align:center;
-  opacity:0;transition:opacity .34s ease;
+  opacity:0;visibility:hidden;transition:opacity .34s ease;
 }
-.scene.on{opacity:1}
+.scene.on{opacity:1;visibility:visible}
 .scene.image{background-size:cover;background-position:center;padding:0}
 .scrim{position:absolute;inset:0;background:linear-gradient(180deg,
   rgba(0,0,0,.34) 0%,rgba(0,0,0,0) 28%,rgba(0,0,0,0) 56%,rgba(0,0,0,.82) 100%)}
