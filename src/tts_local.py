@@ -35,6 +35,11 @@ KOKORO_PY = os.path.join(KOKORO_DIR, "venv/bin/python")
 KOKORO_MODEL = os.path.join(KOKORO_DIR, "kokoro-v1.0.onnx")
 KOKORO_VOICES = os.path.join(KOKORO_DIR, "voices-v1.0.bin")
 
+# Keep clause pauses quick, let sentences settle, and give a new visual/topic room to
+# breathe. These values are applied only inside silence the synthesizer already made.
+PAUSE_SECONDS = {"clause": 0.10, "sentence": 0.21, "beat": 0.66}
+SILENCE_THRESHOLD = 0.04
+
 
 def build_transcript(beats):
     """Join every beat for one continuous read and retain its character span."""
@@ -71,6 +76,131 @@ def approximate_timings(text, spans, duration):
         for match in re.finditer(r"\S+", text)
     ]
     return words, timing
+
+
+def pause_boundaries(text, spans):
+    """Return authored punctuation and beat boundaries in transcript order."""
+    boundaries = []
+    for beat_index, (start, end) in enumerate(spans):
+        say = text[start:end]
+        for match in re.finditer(r"[,;:](?=\s)|[.!?]+(?=[\"']?\s)", say):
+            kind = "clause" if match.group()[0] in ",;:" else "sentence"
+            boundaries.append({
+                "position": start + match.end(),
+                "kind": kind,
+                "seconds": PAUSE_SECONDS[kind],
+            })
+        if beat_index < len(spans) - 1:
+            boundaries.append({
+                "position": end,
+                "kind": "beat",
+                "seconds": PAUSE_SECONDS["beat"],
+            })
+    return boundaries
+
+
+def detect_silences(path):
+    """Find quiet spans in a synthesized WAV using the same threshold as validation."""
+    result = subprocess.run(
+        ["ffmpeg", "-hide_banner", "-nostats", "-i", path, "-af",
+         f"silencedetect=noise=-40dB:d={SILENCE_THRESHOLD}", "-f", "null", "-"],
+        stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True, check=True,
+    )
+    starts = [float(value) for value in re.findall(r"silence_start: ([0-9.]+)", result.stderr)]
+    ends = [
+        (float(end), float(length))
+        for end, length in re.findall(
+            r"silence_end: ([0-9.]+) \| silence_duration: ([0-9.]+)", result.stderr
+        )
+    ]
+    return [
+        {"start": start, "end": end, "duration": length}
+        for start, (end, length) in zip(starts, ends)
+    ]
+
+
+def match_pauses(boundaries, silences, text_length, duration):
+    """Match each text boundary to the longest nearby natural pause.
+
+    Character position is already the local rough path's timing approximation. Midpoints
+    between adjacent authored boundaries give each boundary a disjoint audio window, and
+    choosing the longest quiet span avoids mistaking a normal inter-word gap for a pause.
+    """
+    if not boundaries or not silences or not text_length or not duration:
+        return []
+    expected = [boundary["position"] / text_length * duration for boundary in boundaries]
+    matches = []
+    for index, (boundary, at) in enumerate(zip(boundaries, expected)):
+        previous = expected[index - 1] if index else 0.0
+        following = expected[index + 1] if index + 1 < len(expected) else duration
+        lower, upper = (previous + at) / 2, (at + following) / 2
+        candidates = [
+            silence for silence in silences
+            if silence["duration"] >= SILENCE_THRESHOLD
+            and lower <= (silence["start"] + silence["end"]) / 2 < upper
+        ]
+        if candidates:
+            matches.append((boundary, max(candidates, key=lambda item: item["duration"])))
+    return matches
+
+
+def sample_rate(path):
+    result = subprocess.run(
+        ["ffprobe", "-v", "error", "-select_streams", "a:0",
+         "-show_entries", "stream=sample_rate", "-of", "default=nk=1:nw=1", path],
+        capture_output=True, text=True, check=True,
+    )
+    return int(result.stdout.strip())
+
+
+def shape_pauses(path, text, spans):
+    """Resize existing silent spans by boundary type without another synthesis call."""
+    duration = dur(path)
+    boundaries = pause_boundaries(text, spans)
+    matches = match_pauses(boundaries, detect_silences(path), len(text), duration)
+    if not matches:
+        print("ROUGH PAUSES -> no authored boundaries matched natural silence", file=sys.stderr)
+        return []
+
+    filters, inputs, cursor = [], [], 0.0
+    rate = sample_rate(path)
+    for index, (boundary, silence) in enumerate(matches):
+        audio_label, silence_label = f"a{index}", f"s{index}"
+        filters.append(
+            f"[0:a]atrim=start={cursor:.6f}:end={silence['start']:.6f},"
+            f"asetpts=PTS-STARTPTS[{audio_label}]"
+        )
+        filters.append(
+            f"anullsrc=r={rate}:cl=mono:d={boundary['seconds']:.3f}"
+            f"[{silence_label}]"
+        )
+        inputs.extend((f"[{audio_label}]", f"[{silence_label}]"))
+        cursor = silence["end"]
+
+    tail_label = f"a{len(matches)}"
+    filters.append(f"[0:a]atrim=start={cursor:.6f},asetpts=PTS-STARTPTS[{tail_label}]")
+    inputs.append(f"[{tail_label}]")
+    filters.append(f"{''.join(inputs)}concat=n={len(inputs)}:v=0:a=1[out]")
+
+    shaped = f"{path}.shaped.wav"
+    subprocess.run(
+        ["ffmpeg", "-y", "-loglevel", "error", "-i", path, "-filter_complex",
+         ";".join(filters), "-map", "[out]", "-c:a", "pcm_s16le", shaped],
+        check=True,
+    )
+    os.replace(shaped, path)
+
+    totals = {kind: [0, 0] for kind in PAUSE_SECONDS}
+    for boundary in boundaries:
+        totals[boundary["kind"]][1] += 1
+    for boundary, _ in matches:
+        totals[boundary["kind"]][0] += 1
+    summary = " ".join(
+        f"{kind}={matched}/{authored}@{PAUSE_SECONDS[kind]:.2f}s"
+        for kind, (matched, authored) in totals.items() if authored
+    )
+    print(f"ROUGH PAUSES -> {summary}", file=sys.stderr)
+    return matches
 
 
 def pick_engine():
@@ -150,6 +280,7 @@ def main():
     with tempfile.TemporaryDirectory() as tmp:
         wav = os.path.join(tmp, "vo.wav")
         speak(text, wav)
+        shape_pauses(wav, text, spans)
         d = dur(wav)
 
         # Single synthesized WAV -> vo.mp3 (mono 44.1k, same contract as the paid pass).

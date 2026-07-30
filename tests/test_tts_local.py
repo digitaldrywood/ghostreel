@@ -30,6 +30,64 @@ class LocalTtsTests(unittest.TestCase):
         self.assertEqual(3.0, timing["beats"][1]["audio_end"])
         self.assertEqual(["First", "thought", "Second", "thought"], [word["w"] for word in words])
 
+    def test_pause_boundaries_distinguish_clause_sentence_and_beat(self):
+        text, spans = tts_local.build_transcript([
+            {"say": "A short clause, then a sentence. Another sentence."},
+            {"say": "A new topic."},
+        ])
+
+        boundaries = tts_local.pause_boundaries(text, spans)
+
+        self.assertEqual(["clause", "sentence", "beat"], [item["kind"] for item in boundaries])
+        self.assertEqual(
+            [tts_local.PAUSE_SECONDS[kind] for kind in ("clause", "sentence", "beat")],
+            [item["seconds"] for item in boundaries],
+        )
+
+    def test_match_pauses_uses_longest_quiet_span_in_each_boundary_window(self):
+        boundaries = [
+            {"position": 20, "kind": "clause", "seconds": 0.10},
+            {"position": 50, "kind": "sentence", "seconds": 0.21},
+            {"position": 80, "kind": "beat", "seconds": 0.66},
+        ]
+        silences = [
+            {"start": 1.7, "end": 1.75, "duration": 0.05},
+            {"start": 1.8, "end": 1.9, "duration": 0.10},
+            {"start": 4.8, "end": 5.02, "duration": 0.22},
+            {"start": 7.7, "end": 7.8, "duration": 0.10},
+            {"start": 7.8, "end": 8.3, "duration": 0.50},
+        ]
+
+        matches = tts_local.match_pauses(boundaries, silences, 100, 10.0)
+
+        self.assertEqual([0.10, 0.22, 0.50], [silence["duration"] for _, silence in matches])
+
+    def test_shape_pauses_builds_one_audio_edit_from_matched_silence(self):
+        text, spans = tts_local.build_transcript([
+            {"say": "First sentence. Second sentence."},
+            {"say": "Next beat."},
+        ])
+        silences = [
+            {"start": 1.0, "end": 1.3, "duration": 0.3},
+            {"start": 2.0, "end": 2.4, "duration": 0.4},
+        ]
+        completed = mock.Mock()
+
+        with mock.patch.object(tts_local, "dur", return_value=3.0):
+            with mock.patch.object(tts_local, "detect_silences", return_value=silences):
+                with mock.patch.object(tts_local, "sample_rate", return_value=24000):
+                    with mock.patch.object(tts_local.subprocess, "run", return_value=completed) as run:
+                        with mock.patch.object(tts_local.os, "replace"):
+                            with contextlib.redirect_stderr(io.StringIO()):
+                                matches = tts_local.shape_pauses("sample.wav", text, spans)
+
+        self.assertEqual(2, len(matches))
+        command = run.call_args.args[0]
+        filter_graph = command[command.index("-filter_complex") + 1]
+        self.assertIn("d=0.210", filter_graph)
+        self.assertIn("d=0.660", filter_graph)
+        self.assertEqual(1, run.call_count)
+
     def test_make_kokoro_routes_the_selected_voice_language(self):
         soundfile = mock.Mock()
         kokoro = mock.Mock()
@@ -118,13 +176,15 @@ class LocalTtsTests(unittest.TestCase):
             with mock.patch.object(sys, "argv", ["tts_local.py", str(intake), str(output)]):
                 with mock.patch.object(tts_local, "pick_engine", return_value="kokoro"):
                     with mock.patch.object(tts_local, "make_kokoro", return_value=speak):
-                        with mock.patch.object(tts_local, "dur", return_value=2.0):
-                            with mock.patch.object(tts_local.subprocess, "run") as run:
-                                with contextlib.redirect_stdout(io.StringIO()):
-                                    with contextlib.redirect_stderr(io.StringIO()):
-                                        tts_local.main()
+                        with mock.patch.object(tts_local, "shape_pauses") as shape_pauses:
+                            with mock.patch.object(tts_local, "dur", return_value=2.0):
+                                with mock.patch.object(tts_local.subprocess, "run") as run:
+                                    with contextlib.redirect_stdout(io.StringIO()):
+                                        with contextlib.redirect_stderr(io.StringIO()):
+                                            tts_local.main()
 
             self.assertEqual(["First.\nSecond."], calls)
+            shape_pauses.assert_called_once()
             self.assertEqual(1, run.call_count)
             words = json.loads((output / "audio/words.json").read_text())
             timing = json.loads((output / "audio/timing.json").read_text())
