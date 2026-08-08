@@ -171,6 +171,51 @@ human_action: null
 
 If meaningful out-of-scope work is discovered, file a separate tracker issue in Backlog with a best-guess `detent-agent` effort block instead of expanding the current work item.
 
+## Admission Criteria
+
+### Alignment
+
+- The issue improves this public, MIT-licensed video-as-code reference implementation,
+  its generic examples and documentation, or the Detent configuration that dispatches
+  work for this repository.
+- The requested outcome preserves the script-first method and the pipeline invariants in
+  `AGENTS.md`. Work that intentionally changes those invariants must say so explicitly.
+- The issue is one independently useful change that belongs in this repository rather
+  than a private production, client engagement, or unrelated tool.
+
+### Readiness
+
+- The issue states the desired outcome and observable acceptance criteria. A bug includes
+  a generic reproduction or enough file and command context to reproduce it without
+  private material.
+- Required facts, prices, URLs, runtimes, model names, and capability claims have a
+  verifiable source. The agent is not expected to invent or guess them.
+- Dependencies are linked and terminal, and validation can run with the repository's
+  documented local tools. Any required human choice, such as voice selection or
+  storyboard approval, is identified before dispatch.
+
+### Size
+
+- The work fits one reviewable pull request and one primary outcome. Independent fixes,
+  broad pipeline redesigns, and separately testable follow-ups are split into their own
+  issues.
+- The issue carries a `detent-agent` effort from the project rubric in `AGENTS.md`, sized
+  by the amount of reading, coordination, and validation required rather than diff size.
+- Work estimated above `xhigh` remains in Backlog until an operator explicitly assigns
+  `max` effort and confirms the scope.
+
+### Safety Gates
+
+- Implementation and validation require no client names, customer data, private document
+  titles, real production scripts, credentials, or key-bearing files in this public repo.
+- Acceptance does not depend on paid voice, image, or music generation. Free local or
+  static validation must be sufficient before any optional paid final run.
+- The work preserves `scenes.json` as the generated source of truth, continuous TTS,
+  mono assembly, pipeline order, and the ban on AI-generated text or labeled visuals
+  unless the issue explicitly changes a named invariant with human approval.
+- Destructive external actions, secret access, or unresolved product decisions keep the
+  issue in Backlog until an operator supplies the missing authority or decision.
+
 ## Required Execution Flow
 
 Use the current Detent state as the source of truth for which section applies.

@@ -61,6 +61,26 @@ polling:
   conditional: true
 intake:
   sources: []
+backlog_admission:
+  enabled: true
+  schedule: '*/15 * * * *'
+  auto_admit: true
+  auto_admit_min_confidence: 0.85
+  sources:
+    states:
+      - Backlog
+  target_state: Todo
+  criteria_section: Admission Criteria
+  authors:
+    allow:
+      - corylanou
+      - loganlanou
+      - michaelhvisser
+      - jarvislanou
+  max_proposals_per_run: 3
+  max_open_proposals: 10
+  max_candidates_per_run: 50
+  proposal_expiry_days: 7
 workspace:
   # NOTE: this repository is public. Machine-specific absolute paths
   # (workspace.root, workspace.source_root) live in the gitignored
