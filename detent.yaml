@@ -81,6 +81,30 @@ backlog_admission:
   max_open_proposals: 10
   max_candidates_per_run: 50
   proposal_expiry_days: 7
+routines:
+  - name: repository-sweep
+    schedule: '0 15 * * 4'
+    prompt: |
+      Sweep this public video-as-code repository for real, actionable defects
+      and improvements that no open issue already covers.
+
+      Report at most 3 findings per run. If you find more, report only the
+      3 highest-impact findings and leave the rest for a later run. Filing
+      nothing is a valid and expected outcome.
+
+      For each finding, give a stable dedup_key, a specific title, and a body
+      containing: concrete file:line evidence, what breaks or degrades as a
+      result, and acceptance criteria an implementer can verify. Include a
+      detent-agent block with an effort chosen from the rubric in AGENTS.md.
+
+      Prioritize violations of the script-first pipeline contract, unsafe or
+      incorrect media assembly, broken generic examples, and gaps in the free
+      local validation path. Keep every finding client-scrubbed and supported
+      entirely by files in this public repository.
+
+      Do not file speculative refactors, style preferences, dependency bumps
+      with no stated benefit, claims that require private material or paid
+      generation to verify, or anything without repository file:line evidence.
 workspace:
   # NOTE: this repository is public. Machine-specific absolute paths
   # (workspace.root, workspace.source_root) live in the gitignored
