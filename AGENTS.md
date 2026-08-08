@@ -127,20 +127,22 @@ orchestrator can size it:
 
 ```detent-agent
 schema: 1
-effort: low
+effort: medium
 ```
 
 `effort` must be exactly one of `low`, `medium`, `high`, `xhigh`, `max`, or
 `ultra`. Plausible-sounding values like `small`, `trivial`, or `xs` are rejected
 by the backend and stall the whole project's preflight until a human edits the
-issue body. Omit the key entirely to inherit the project default.
+issue body. This project uses the four-tier rubric below; omit the key entirely
+to inherit the project default rather than assigning `low` or `ultra`.
 
 Size by how much reading the work needs, not by diff size:
 
-- `low` — one file, contract already stated in the issue (a key mismatch, a
-  wrong path, a docs edit).
-- `medium` — a few files that must agree, or a change needing a new test.
-- `high` — the beat schema, TTS timing, or cue-sync engine, where the fix has to
-  hold across the whole pipeline order.
-- `xhigh` and above — reserve for work that has to re-derive the measured
-  baseline (sentence distribution, pause statistics) before it can be judged.
+- `medium` — small, mechanical, tightly specified work with `file:line`
+  references and complete acceptance criteria.
+- `high` — a standard feature or fix with some ambiguity or a cross-cutting
+  surface.
+- `xhigh` — a new subsystem, tricky state or concurrency, or restart and
+  recovery semantics.
+- `max` — operator-designated only; agents and backlog admission never assign
+  it automatically.
