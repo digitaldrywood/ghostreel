@@ -99,6 +99,7 @@ agent:
   auto_promote:
     enabled: true
     quiet_seconds: 0
+    # This repository-level label must exist; operators apply it as the per-issue brake.
     optout_label: requires-human-review
     allowed_issue_labels: []
     gate_wait_state: source
