@@ -215,11 +215,21 @@ budget:
   # Disabled to match every other project on this host: the fleet runs on a flat
   # Codex subscription, so USD caps are notional and park healthy work. Real
   # brakes remain: no-progress parking, max_turns, capacity pauses.
-  # billing_mode stays `metered` even though caps are off: it is what keeps
-  # agent.no_progress_spend_limit_usd an enforced brake that parks a runaway
-  # session, rather than advisory telemetry. Doctor's "inert budget" warning on
-  # this block is cosmetic and accepted.
-  billing_mode: metered
+  # billing_mode is subscription and MUST stay subscription on every project on
+  # every host (operator rule, 2026-08-12). Do not set it back to metered in
+  # order to re-arm agent.no_progress_spend_limit_usd as a brake -- that is
+  # exactly the configuration that cost detent.build 69 hours of downtime
+  # starting 2026-08-09. Notional USD parked its #6 and #17 at 4.8M and 16.8M
+  # tokens, far under the 25M token limit meant to catch them, and per-issue USD
+  # holds never self-clear.
+  # subscriptionBilling() reads billing_mode ALONE and ignores enabled
+  # (internal/orchestrator/config.go:289), so enabled: false is NOT sufficient.
+  # Runaway protection here is max_turns (20), no-progress parking, and capacity
+  # pauses. For a token-based brake add agent.no_progress_token_limit (detent
+  # .build uses 25M); that is a different knob from max_session_tokens, which
+  # the agent block above deliberately leaves unset.
+  # Doctor's "inert budget" warning on this block is cosmetic and accepted.
+  billing_mode: subscription
   enabled: false
 hooks:
   timeout_ms: 60000
