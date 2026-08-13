@@ -272,6 +272,15 @@ The first segmentation of a new script creates unique `ASSIGN VISUAL` cards. Rep
 those in `scenes.json`; later segmentation keeps matched assignments and drops a cue only
 when its verbatim phrase no longer exists in the edited paragraph.
 
+The long-form render directory accepts exactly one numbered asset per beat. Every
+`show.type` (`capture`, `diagram`, `terminal`, `text`, or `image`) may use
+`out/render/NN.png` for a still or `out/render/NN.mp4` for a moving render. Use MP4 for
+animated HTML text cards from `record_html.mjs` and screen recordings; use PNG for static
+captures, diagrams, terminal output, text cards, and B-roll. The assembler ignores audio
+inside rendered MP4s, loops or trims moving renders to the beat window, and normalizes all
+inputs to the configured frame size, thirty frames per second, and `yuv420p` before
+concatenation.
+
 > **Dogfood:** this is the same pipeline used live in the "Video as Code" conference talk —
 > the audience picks a theme, ghostreel builds the short while the speaker talks, and the
 > `cheatsheet.html` shows the real cost. What you clone is what runs on stage.

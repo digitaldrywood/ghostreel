@@ -6,7 +6,8 @@
 # Expects (produced by earlier stages):
 #   out/audio/vo.mp3      the continuous voiceover            (src/tts.py)
 #   out/audio/words.json  word-level timings                  (src/tts.py)
-#   out/render/NN.png     one rendered visual per beat, 0-indexed  (your render step)
+#   out/render/NN.png     a still rendered visual, 0-indexed       (your render step)
+#   out/render/NN.mp4     or a moving render; provide one or the other per beat
 #   out/music.mp3         optional instrumental bed
 #
 # Writes out/final.mp4. ffmpeg does all the work; the only clever part is computing each
@@ -53,12 +54,26 @@ PY
 # --- build one frame-snapped segment per beat -------------------------------------
 SEGS=()
 while read -r idx start dur; do
-  vis="$OUT/render/$(printf '%02d' "$idx").png"
-  [ -f "$vis" ] || { echo "missing visual: $vis (run your render step)"; exit 1; }
+  stem="$OUT/render/$(printf '%02d' "$idx")"
+  still="$stem.png"
+  video="$stem.mp4"
+  if [ -f "$still" ] && [ -f "$video" ]; then
+    echo "ambiguous visual for beat $idx: found both $still and $video; keep exactly one" >&2
+    exit 1
+  elif [ -f "$video" ]; then
+    vis="$video"
+    input_args=(-stream_loop -1 -i "$vis")
+  elif [ -f "$still" ]; then
+    vis="$still"
+    input_args=(-loop 1 -i "$vis")
+  else
+    echo "missing visual for beat $idx: expected $still or $video (run your render step)" >&2
+    exit 1
+  fi
   seg="$OUT/seg/$(printf '%02d' "$idx").mp4"
-  ffmpeg -y -loglevel error -loop 1 -t "$dur" -i "$vis" \
+  ffmpeg -y -loglevel error "${input_args[@]}" -map 0:v:0 -t "$dur" \
     -vf "scale=${W}:${H}:force_original_aspect_ratio=decrease,pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2:${BG},setsar=1,fps=30" \
-    -c:v libx264 -preset slow -crf 18 -pix_fmt yuv420p "$seg"
+    -an -c:v libx264 -preset slow -crf 18 -pix_fmt yuv420p "$seg"
   SEGS+=("$seg")
 done < "$OUT/windows.txt"
 

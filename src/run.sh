@@ -51,8 +51,9 @@ for i,b in enumerate(json.load(open(sys.argv[1]))["beats"]):
     print(f"      SHOW: {b['show']['type']:8} {b['show'].get('path', b['show'].get('lines',''))}")
 PY
 
-echo "==> 4. render     — produce out/render/NN.png for each beat"
-echo "    captures/diagrams/terminals → real screenshots or Mermaid; text → record_html.mjs;"
+echo "==> 4. render     — produce exactly one out/render/NN.png or NN.mp4 for each beat"
+echo "    every show type accepts a PNG still or MP4 render; text and labels come from real"
+echo "    captures, Mermaid, terminal output, or HTML; animated text → record_html.mjs;"
 echo "    AI images → only for short B-roll. (This step is yours to wire to your sources.)"
 echo "    example for a text card:"
 echo "      node src/record_html.mjs 'src/kinetic.html#NO%20CAMERA|NO%20EDITOR' $OUT/render/00.mp4 1920 1080 4"
