@@ -109,10 +109,14 @@ def main():
                 acts.append("fxBurst(false)")
             T.append((start, ";".join(acts)))
 
+    # Ambient particles are part of the timeline too. Starting their interval
+    # while the recorder is still settling assets would discard early bursts.
+    if fx == "party" and T:
+        start, acts = T[0]
+        T[0] = (start, f"startAmbient(680,false);{acts}")
+
     total = max(end_ms / 1000.0, timing.get("duration", 0.0)) + 0.4
     tl = ",\n ".join(f"[{ms},()=>{{{acts}}}]" for ms, acts in T)
-
-    ambient = "startAmbient(680,false);" if fx == "party" else ""
     html = f"""<!doctype html><html><head><meta charset="utf-8">
 <link rel="stylesheet" href="{furl(os.path.join(SRC,'kinetic.css'))}">
 <style>#stage{{background:{bg}}}</style></head>
@@ -123,7 +127,6 @@ def main():
 <script>window.FXCOLORS={json.dumps(fxcolors)};</script>
 <script src="{furl(os.path.join(SRC,'kinetic.js'))}"></script>
 <script>
-{ambient}
 const T=[
  {tl}
 ];

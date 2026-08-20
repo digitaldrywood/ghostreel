@@ -281,6 +281,11 @@ inside rendered MP4s, loops or trims moving renders to the beat window, and norm
 inputs to the configured frame size, thirty frames per second, and `yuv420p` before
 concatenation.
 
+HTML passed to `record_html.mjs` exposes `window.__startTL()`. The recorder sets
+`window.__GHOSTREEL_RECORDING__` before page scripts run, settles fonts and background
+images, fixes the trim point, and then calls that hook. A page may schedule the same hook
+for a direct browser preview only when the recording marker is absent.
+
 > **Dogfood:** this is the same pipeline used live in the "Video as Code" conference talk —
 > the audience picks a theme, ghostreel builds the short while the speaker talks, and the
 > `cheatsheet.html` shows the real cost. What you clone is what runs on stage.

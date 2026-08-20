@@ -28,6 +28,12 @@ const ctx = await browser.newContext({
   recordVideo: { dir, size: { width: W, height: H } },
 });
 const page = await ctx.newPage();
+// Pages use this marker to leave their preview auto-start disabled. It has to
+// exist before any page script runs or an eager preview timer can race asset
+// settling and advance the timeline past the later trim point.
+await page.addInitScript(() => {
+  window.__GHOSTREEL_RECORDING__ = true;
+});
 const t0 = Date.now();
 await page.goto("file://" + file, { waitUntil: "load" });
 // Everything the first frames depend on has to be decoded BEFORE we measure the
@@ -45,8 +51,12 @@ await page.evaluate(async () => {
   await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 });
 await page.waitForTimeout(220);
+const hasTimeline = await page.evaluate(() => typeof window.__startTL === "function");
+if (!hasTimeline) {
+  throw new Error("recorded HTML must expose window.__startTL()");
+}
 const lead = (Date.now() - t0) / 1000; // trim the loading lead-in off the front
-await page.evaluate(() => window.__startTL && window.__startTL()); // start the animation
+await page.evaluate(() => window.__startTL()); // start only after the trim point is fixed
 await page.waitForTimeout(secs * 1000 + 300);
 await page.close();
 await ctx.close();

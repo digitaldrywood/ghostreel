@@ -68,10 +68,13 @@
       if (started) return; started = true;
       T.forEach(([ms, fn]) => setTimeout(fn, ms));
     };
-    // start once the document and fonts are ready, so frame 0 is painted.
+    // Direct previews auto-start once the page is painted. The recorder sets
+    // its marker before navigation and calls the same hook after asset settling.
     Promise.all([
       new Promise((r) => (document.readyState === 'complete' ? r() : addEventListener('load', r))),
       document.fonts ? document.fonts.ready : Promise.resolve(),
-    ]).then(() => setTimeout(window.__startTL, 260));
+    ]).then(() => {
+      if (!window.__GHOSTREEL_RECORDING__) setTimeout(window.__startTL, 260);
+    });
   };
 })();
