@@ -4,6 +4,7 @@ import io
 import json
 import os
 from pathlib import Path
+import re
 import sys
 import tempfile
 import unittest
@@ -124,16 +125,100 @@ class LocalTtsTests(unittest.TestCase):
                     with self.assertRaisesRegex(SystemExit, "unknown Kokoro voice"):
                         tts_local.make_kokoro()
 
-    def test_pick_engine_falls_back_only_when_kokoro_is_missing(self):
-        with mock.patch.dict(os.environ, {"SCRATCH_ENGINE": "kokoro"}):
-            with mock.patch.object(tts_local.os.path, "exists", return_value=False):
-                with contextlib.redirect_stderr(io.StringIO()) as stderr:
-                    self.assertEqual("piper", tts_local.pick_engine())
-        self.assertIn("falling back to piper", stderr.getvalue())
+    def test_pick_engine_requires_every_kokoro_artifact(self):
+        required = (
+            tts_local.KOKORO_PY,
+            tts_local.KOKORO_MODEL,
+            tts_local.KOKORO_VOICES,
+        )
+        for missing in required:
+            with self.subTest(missing=missing):
+                with mock.patch.dict(os.environ, {"SCRATCH_ENGINE": "kokoro"}):
+                    with mock.patch.object(
+                        tts_local.os.path, "exists", side_effect=lambda path: path != missing
+                    ):
+                        with contextlib.redirect_stderr(io.StringIO()) as stderr:
+                            self.assertEqual("piper", tts_local.pick_engine())
+                self.assertIn(missing, stderr.getvalue())
+                self.assertIn("falling back to piper", stderr.getvalue())
 
         with mock.patch.dict(os.environ, {"SCRATCH_ENGINE": "kokoro"}):
             with mock.patch.object(tts_local.os.path, "exists", return_value=True):
                 self.assertEqual("kokoro", tts_local.pick_engine())
+
+    def test_missing_kokoro_artifacts_never_construct_the_narrator_engine(self):
+        required = (
+            tts_local.KOKORO_PY,
+            tts_local.KOKORO_MODEL,
+            tts_local.KOKORO_VOICES,
+        )
+        for missing in required:
+            with self.subTest(missing=missing):
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    temp = Path(temp_dir)
+                    intake = temp / "intake.json"
+                    intake.write_text(json.dumps({"beats": [{"say": "One thought."}]}))
+
+                    def speak(_text, wav):
+                        Path(wav).write_bytes(b"wav")
+
+                    with mock.patch.object(
+                        sys, "argv", ["tts_local.py", str(intake), str(temp / "out")]
+                    ):
+                        with mock.patch.dict(os.environ, {"SCRATCH_ENGINE": "kokoro"}):
+                            with mock.patch.object(
+                                tts_local,
+                                "missing_kokoro_artifacts",
+                                return_value=[("required artifact", missing)],
+                            ):
+                                with mock.patch.object(tts_local, "make_kokoro") as kokoro:
+                                    with mock.patch.object(
+                                        tts_local, "make_piper", return_value=speak
+                                    ):
+                                        with mock.patch.object(tts_local, "shape_pauses"):
+                                            with mock.patch.object(tts_local, "dur", return_value=1.0):
+                                                with mock.patch.object(tts_local.subprocess, "run"):
+                                                    with contextlib.redirect_stdout(io.StringIO()):
+                                                        with contextlib.redirect_stderr(io.StringIO()):
+                                                            tts_local.main()
+                    kokoro.assert_not_called()
+
+    def test_missing_kokoro_artifacts_stop_dialogue_before_engine_construction(self):
+        required = (
+            tts_local.KOKORO_PY,
+            tts_local.KOKORO_MODEL,
+            tts_local.KOKORO_VOICES,
+        )
+        document = {
+            "format": "dialogue",
+            "speakers": {
+                "host": {"local_voice": "af_heart"},
+                "guest": {"local_voice": "am_michael"},
+            },
+            "beats": [{"speaker": "host", "say": "One thought."}],
+        }
+        for missing in required:
+            with self.subTest(missing=missing):
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    temp = Path(temp_dir)
+                    intake = temp / "intake.json"
+                    intake.write_text(json.dumps(document))
+                    with mock.patch.object(
+                        sys, "argv", ["tts_local.py", str(intake), str(temp / "out")]
+                    ):
+                        with mock.patch.dict(os.environ, {"SCRATCH_ENGINE": "kokoro"}):
+                            with mock.patch.object(
+                                tts_local,
+                                "missing_kokoro_artifacts",
+                                return_value=[("required artifact", missing)],
+                            ):
+                                with mock.patch.object(tts_local, "load_kokoro_engine") as load:
+                                    with self.assertRaisesRegex(
+                                        SystemExit,
+                                        rf"{re.escape(missing)}.*Piper cannot provide two voices",
+                                    ):
+                                        tts_local.main()
+                    load.assert_not_called()
 
     def test_make_piper_passes_text_to_the_configured_voice(self):
         with mock.patch.dict(
