@@ -181,10 +181,27 @@ def shape_pauses(path, text, spans):
     return matches
 
 
-def pick_engine():
+def missing_kokoro_artifacts():
+    """Return the required Kokoro artifacts that are not installed."""
+    required = (
+        ("Python interpreter", KOKORO_PY),
+        ("ONNX model", KOKORO_MODEL),
+        ("voices bundle", KOKORO_VOICES),
+    )
+    return [(name, path) for name, path in required if not os.path.exists(path)]
+
+
+def pick_engine(dialogue=False):
     eng = os.environ.get("SCRATCH_ENGINE", "kokoro")
-    if eng == "kokoro" and not (os.path.exists(KOKORO_MODEL) and os.path.exists(KOKORO_PY)):
-        print(f"kokoro model/venv missing under {KOKORO_DIR} — falling back to piper",
+    missing = missing_kokoro_artifacts() if eng == "kokoro" else []
+    if missing:
+        details = ", ".join(f"{name}: {path}" for name, path in missing)
+        if dialogue:
+            sys.exit(
+                "error: dialogue rough cuts require Kokoro for two local voices; "
+                f"missing {details}. Piper cannot provide two voices"
+            )
+        print(f"kokoro unavailable; missing {details} — falling back to piper",
               file=sys.stderr)
         eng = "piper"
     return eng
@@ -251,13 +268,15 @@ def make_piper():
 def main():
     if len(sys.argv) < 3:
         sys.exit("usage: tts_local.py <script.json> <run_dir>")
-    engine = pick_engine()
-    document = json.load(open(sys.argv[1]))
+    with open(sys.argv[1]) as script_file:
+        document = json.load(script_file)
+    dialogue = is_dialogue(document)
+    engine = pick_engine(dialogue=dialogue)
     beats = document["beats"]
     run = sys.argv[2]
     os.makedirs(os.path.join(run, "audio"), exist_ok=True)
 
-    if is_dialogue(document):
+    if dialogue:
         if engine != "kokoro":
             sys.exit("error: dialogue rough cuts require Kokoro for two local voices")
         try:
