@@ -89,8 +89,8 @@ end to end and report its results in the Workpad.**
 
 That path is free — it uses the local Kokoro voice (`src/tts_local.py`,
 `~/.local/share/kokoro-tts`, `KOKORO_VOICE` defaults to `am_michael`) and
-placeholder cards. It needs `ffmpeg`, `node`, `python3`, and ImageMagick
-`convert` on PATH, plus Playwright Chromium. If `node_modules` is absent in the
+placeholder cards. It needs `ffmpeg`, `node`, and `python3` on PATH, plus
+Playwright Chromium. If `node_modules` is absent in the
 worktree, `ghostreel.sh` will symlink a borrowed tree when `GHOSTREEL_NODE_PATH`
 is set; otherwise run `npm install`. If the rough cut genuinely cannot run in
 your environment, say so explicitly in the Workpad — do not silently skip it and
