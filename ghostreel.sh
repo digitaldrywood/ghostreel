@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # ghostreel.sh — theme/intake -> finished vertical short + cost receipt.
-# Self-contained: needs only this repo + your API keys + ffmpeg + node(playwright) + python3.
+# Self-contained: rough cuts need this repo + ffmpeg + node(playwright) + python3.
+# Paid finals additionally need API keys and ImageMagick's `convert` command.
 #
 #   ./ghostreel.sh --rough intake.json   # FREE preview (local Kokoro voice, placeholder cards)
 #   ./ghostreel.sh intake.json           # paid final (real voice + AI images + music)
@@ -40,7 +41,8 @@ INTAKE="${ARGS[0]:-examples/intake.example.json}"
 if [ -z "${ELEVENLABS_API_KEY:-}" ] && [ -f .envrc ]; then set -a; . ./.envrc; set +a; fi
 
 need() { command -v "$1" >/dev/null || { echo "missing dependency: $1"; exit 1; }; }
-need ffmpeg; need node; need python3; need convert
+need ffmpeg; need node; need python3
+if [ "$ROUGH" = 0 ]; then need convert; fi
 # ESM `import` ignores NODE_PATH, so a borrowed tree has to be visible at ./node_modules.
 if [ ! -d node_modules/playwright ] && [ -n "${GHOSTREEL_NODE_PATH:-}" ]; then
   ln -sfn "$GHOSTREEL_NODE_PATH" node_modules

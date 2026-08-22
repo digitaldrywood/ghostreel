@@ -176,8 +176,8 @@ gate:
   #
   # It is deliberately cheap. The real end-to-end signal is the free rough cut
   # (`./ghostreel.sh --rough`), which WORKFLOW.md requires by hand for any change
-  # touching the pipeline, beat schema, TTS, or cue sync — it needs Kokoro,
-  # Playwright Chromium and ImageMagick, so it is not run on every PR.
+  # touching the pipeline, beat schema, TTS, or cue sync — it needs Kokoro and
+  # Playwright Chromium, so it is not run on every PR.
   #
   # The tests/ suite uses stdlib unittest, so it needs no pytest or additional
   # dependency. The directory guard keeps the shared command compatible with
