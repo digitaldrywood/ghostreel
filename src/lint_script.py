@@ -400,7 +400,12 @@ def short_reel_rhythm_diagnostics(distribution: Distribution) -> list[Diagnostic
     return diagnostics
 
 
-def load_input(path: Path, *, calibration: bool = False) -> NarrationInput:
+def load_input(
+    path: Path,
+    *,
+    calibration: bool = False,
+    allow_missing_show: bool = False,
+) -> NarrationInput:
     try:
         raw = path.read_text(encoding="utf-8")
     except OSError as error:
@@ -420,7 +425,7 @@ def load_input(path: Path, *, calibration: bool = False) -> NarrationInput:
         )
 
     if path.suffix.lower() == ".json":
-        return load_scenes(raw, path)
+        return load_scenes(raw, path, allow_missing_show=allow_missing_show)
     if path.suffix.lower() == ".md":
         try:
             paragraphs = parse_prose(raw)
@@ -465,7 +470,12 @@ def load_input(path: Path, *, calibration: bool = False) -> NarrationInput:
     )
 
 
-def load_scenes(raw: str, path: Path) -> NarrationInput:
+def load_scenes(
+    raw: str,
+    path: Path,
+    *,
+    allow_missing_show: bool = False,
+) -> NarrationInput:
     try:
         document = json.loads(raw)
     except json.JSONDecodeError as error:
@@ -493,12 +503,15 @@ def load_scenes(raw: str, path: Path) -> NarrationInput:
         if not isinstance(say, str) or not say.strip():
             raise InputError(f"{path}: beat {index} must contain a non-empty say string")
         show = beat.get("show")
-        if not isinstance(show, dict):
+        if show is None and allow_missing_show:
+            show = None
+        elif not isinstance(show, dict):
             raise InputError(f"{path}: beat {index} must contain a show object")
         speaker = beat.get("speaker") if dialogue else None
         label = f"beat {index}" + (f" [{speaker}]" if speaker else "")
         segments.append(Segment(label, say.strip()))
-        shows.append((index, show))
+        if show is not None:
+            shows.append((index, show))
 
     return NarrationInput(
         segments=tuple(segments),
@@ -787,7 +800,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     try:
-        narration = load_input(args.script, calibration=args.calibration)
+        narration = load_input(
+            args.script,
+            calibration=args.calibration,
+            allow_missing_show=args.short_reel,
+        )
     except InputError as error:
         print(f"lint error: {error}", file=sys.stderr)
         return 2

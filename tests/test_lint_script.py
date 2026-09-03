@@ -141,6 +141,34 @@ class LintScriptTests(unittest.TestCase):
         self.assertIn("Sentences with at most 6 words: 1/2", stdout)
         self.assertIn("Lint passed.", stdout)
 
+    def test_short_profile_allows_missing_show_but_long_form_rejects_it(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            scenes = Path(temp_dir) / "reel.json"
+            scenes.write_text(
+                json.dumps(
+                    {
+                        "beats": [
+                            {
+                                "say": (
+                                    "Start with one clear idea. Then connect each scene to "
+                                    "the sentence that gives it meaning."
+                                )
+                            }
+                        ]
+                    }
+                )
+            )
+
+            short_code, short_stdout, short_stderr = self.call_main(
+                scenes, "--short-reel"
+            )
+            long_code, _, long_stderr = self.call_main(scenes)
+
+        self.assertEqual(short_code, 0, short_stdout + short_stderr)
+        self.assertIn("Lint passed.", short_stdout)
+        self.assertEqual(long_code, 2)
+        self.assertIn("beat 1 must contain a show object", long_stderr)
+
     def test_short_profile_keeps_writing_and_spoken_form_rules(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             scenes = Path(temp_dir) / "reel.json"

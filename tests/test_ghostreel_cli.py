@@ -26,8 +26,7 @@ class GhostreelCliTests(unittest.TestCase):
                             "say": (
                                 "Start with one clear idea. Then connect each scene to "
                                 "the sentence that gives it meaning."
-                            ),
-                            "show": {"type": "text", "lines": ["CLEAR IDEA"]},
+                            )
                         }
                     ],
                 }
