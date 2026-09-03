@@ -310,7 +310,7 @@ src/segment_script.py         prose → beats while preserving visual assignment
 src/tts.py                   ElevenLabs with timestamps (narrator or two-host dialogue) [paid]
 src/tts_local.py             FREE local voice for rough cuts (Kokoro; Piper fallback)
 src/images.py                gpt-image B-roll (sequential, retrying)            [paid]
-src/music.py                 ElevenLabs Music instrumental bed                 [from plan]
+src/music.py + music.sh      generate, then mix the instrumental bed           [from plan]
 src/build_kinetic.py         intake + timings → kinetic HTML (uses the engine below)
 src/kinetic.css + kinetic.js the original MIT kinetic-typography + particle engine
 src/fonts/                   bundled OFL display fonts (Anton, Bebas Neue)
