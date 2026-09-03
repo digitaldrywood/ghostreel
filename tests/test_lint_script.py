@@ -113,6 +113,32 @@ class LintScriptTests(unittest.TestCase):
 
         self.assertEqual(return_code, 0, stdout + stderr)
         self.assertIn("short vertical reel rhythm", stdout)
+        self.assertIn("minimum 5.50", stdout)
+        self.assertIn("Lint passed.", stdout)
+
+    def test_short_profile_counts_two_word_punch_line(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            scenes = Path(temp_dir) / "reel.json"
+            scenes.write_text(
+                json.dumps(
+                    {
+                        "beats": [
+                            {
+                                "say": (
+                                    "Go now. Keep the entire message connected while each "
+                                    "clear scene supports the listener."
+                                ),
+                                "show": {"type": "text", "lines": ["GO NOW"]},
+                            }
+                        ]
+                    }
+                )
+            )
+
+            return_code, stdout, stderr = self.call_main(scenes, "--short-reel")
+
+        self.assertEqual(return_code, 0, stdout + stderr)
+        self.assertIn("Sentences with at most 6 words: 1/2", stdout)
         self.assertIn("Lint passed.", stdout)
 
     def test_short_profile_keeps_writing_and_spoken_form_rules(self):

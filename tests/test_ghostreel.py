@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class GhostreelTests(unittest.TestCase):
-    def test_rejected_paid_intake_preserves_output_and_skips_generators(self):
+    def run_rejected(self, *options):
         slug = f"lint-rejection-{uuid.uuid4().hex}"
         run_dir = ROOT / "out" / slug
         run_dir.mkdir(parents=True)
@@ -62,7 +62,7 @@ class GhostreelTests(unittest.TestCase):
 
             try:
                 result = subprocess.run(
-                    ["bash", str(ROOT / "ghostreel.sh"), str(intake)],
+                    ["bash", str(ROOT / "ghostreel.sh"), *options, str(intake)],
                     capture_output=True,
                     cwd=ROOT,
                     env=env,
@@ -73,6 +73,11 @@ class GhostreelTests(unittest.TestCase):
             finally:
                 shutil.rmtree(run_dir)
 
+        return result, invocations, marker_contents
+
+    def test_rejected_paid_intake_preserves_output_and_skips_generators(self):
+        result, invocations, marker_contents = self.run_rejected()
+
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
         self.assertIn("== narration lint (short vertical reel) ==", result.stdout)
         self.assertIn("Lint failed", result.stdout)
@@ -81,6 +86,16 @@ class GhostreelTests(unittest.TestCase):
         self.assertNotIn("src/tts.py", invocations)
         self.assertNotIn("src/images.py", invocations)
         self.assertNotIn("src/music.py", invocations)
+
+    def test_rejected_rough_intake_preserves_output_and_skips_local_tts(self):
+        result, invocations, marker_contents = self.run_rejected("--rough")
+
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("== narration lint (short vertical reel) ==", result.stdout)
+        self.assertIn("Lint failed", result.stdout)
+        self.assertEqual(marker_contents, "existing run\n")
+        self.assertIn("src/lint_script.py --short-reel", invocations)
+        self.assertNotIn("src/tts_local.py", invocations)
 
 
 if __name__ == "__main__":

@@ -42,7 +42,7 @@ THRESHOLDS = {
 # It still needs audible contrast, so this profile requires both a compact line and a
 # longer line, plus enough variation between sentence lengths to avoid a card-by-card
 # cadence. Writing, dialogue, and visual rules remain unchanged.
-SHORT_REEL_MEAN_WORDS = 6.0
+SHORT_REEL_MEAN_WORDS = 5.5
 SHORT_REEL_STDDEV_WORDS = 2.0
 SHORT_REEL_SHORT_SENTENCE_WORDS = 6
 SHORT_REEL_LONG_SENTENCE_WORDS = 10
@@ -301,7 +301,7 @@ class InputError(ValueError):
     """Raised when an input cannot provide valid narration."""
 
 
-def analyze_distribution(text: str) -> Distribution:
+def analyze_distribution(text: str, *, minimum_sentence_words: int = 3) -> Distribution:
     sentences = (
         sentence.strip()
         for sentence in SENTENCE_BOUNDARY_RE.split(text.strip())
@@ -310,7 +310,7 @@ def analyze_distribution(text: str) -> Distribution:
     counts = tuple(
         count
         for sentence in sentences
-        if (count := len(WORD_RE.findall(sentence))) >= 3
+        if (count := len(WORD_RE.findall(sentence))) >= minimum_sentence_words
     )
     return Distribution(counts)
 
@@ -792,7 +792,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"lint error: {error}", file=sys.stderr)
         return 2
 
-    distribution = analyze_distribution(narration.text)
+    distribution = analyze_distribution(
+        narration.text,
+        minimum_sentence_words=1 if args.short_reel else 3,
+    )
     diagnostics = (
         short_reel_rhythm_diagnostics(distribution)
         if args.short_reel
