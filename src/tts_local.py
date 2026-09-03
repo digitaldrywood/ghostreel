@@ -21,7 +21,8 @@ Engines (SCRATCH_ENGINE env, default "kokoro"):
 Falls back to piper automatically when the kokoro model files are missing.
 Kokoro weights are Apache-2.0 and kokoro-onnx is MIT, so both are fine to use here.
 
-Usage: python3 src/tts_local.py <script.json> <run_dir>
+Usage: python3 src/tts_local.py --preflight <script.json>
+       python3 src/tts_local.py <script.json> <run_dir>
 Writes the same files as tts.py (vo.mp3, words.json, timing.json) so the rest of the
 pipeline is identical. Word timings are approximate (spread across the continuous
 transcript) — fine for reviewing flow; the paid pass gets exact alignment.
@@ -188,11 +189,15 @@ def missing_kokoro_artifacts():
         ("ONNX model", KOKORO_MODEL),
         ("voices bundle", KOKORO_VOICES),
     )
-    return [(name, path) for name, path in required if not os.path.exists(path)]
+    return [(name, path) for name, path in required if not os.path.isfile(path)]
 
 
 def pick_engine(dialogue=False):
     eng = os.environ.get("SCRATCH_ENGINE", "kokoro")
+    if eng not in {"kokoro", "piper"}:
+        sys.exit(
+            f"error: unsupported SCRATCH_ENGINE {eng!r}; expected 'kokoro' or 'piper'"
+        )
     missing = missing_kokoro_artifacts() if eng == "kokoro" else []
     if missing:
         details = ", ".join(f"{name}: {path}" for name, path in missing)
@@ -205,6 +210,141 @@ def pick_engine(dialogue=False):
               file=sys.stderr)
         eng = "piper"
     return eng
+
+
+def validate_kokoro_voice(voice):
+    """Validate a configured voice without loading the Kokoro model."""
+    try:
+        voice_details(voice)
+    except ValueError as exc:
+        sys.exit(f"error: {exc}")
+    return voice
+
+
+def validate_kokoro_runtime(selected_voices):
+    """Verify that Kokoro loads and the installed bundle contains each voice."""
+    if not os.access(KOKORO_PY, os.X_OK):
+        sys.exit(f"error: Kokoro Python interpreter is not executable: {KOKORO_PY}")
+    probe = """
+import sys
+
+try:
+    import soundfile
+    from kokoro_onnx import Kokoro
+except Exception as error:
+    print(f"IMPORT_ERROR={type(error).__name__}: {error}", file=sys.stderr)
+    raise SystemExit(3)
+
+try:
+    engine = Kokoro(sys.argv[1], sys.argv[2])
+except Exception as error:
+    print(f"LOAD_ERROR={type(error).__name__}: {error}", file=sys.stderr)
+    raise SystemExit(1)
+
+missing = [voice for voice in sys.argv[3:] if voice not in engine.voices]
+if missing:
+    print("MISSING_VOICES=" + ",".join(missing))
+    raise SystemExit(2)
+"""
+    result = subprocess.run(
+        [
+            KOKORO_PY,
+            "-c",
+            probe,
+            KOKORO_MODEL,
+            KOKORO_VOICES,
+            *selected_voices,
+        ],
+        capture_output=True,
+        text=True,
+    )
+    missing = next(
+        (
+            line.removeprefix("MISSING_VOICES=")
+            for line in result.stdout.splitlines()
+            if line.startswith("MISSING_VOICES=")
+        ),
+        None,
+    )
+    if missing is not None:
+        sys.exit(
+            f"error: Kokoro voices bundle {KOKORO_VOICES} does not contain selected "
+            f"voice(s): {missing}"
+        )
+    import_error = next(
+        (
+            line.removeprefix("IMPORT_ERROR=")
+            for line in result.stderr.splitlines()
+            if line.startswith("IMPORT_ERROR=")
+        ),
+        None,
+    )
+    if import_error is not None:
+        sys.exit(
+            f"error: Kokoro Python environment {KOKORO_PY} cannot import required "
+            f"runtime dependencies: {import_error}"
+        )
+    if result.returncode:
+        detail = next(
+            (
+                line.removeprefix("LOAD_ERROR=")
+                for line in result.stderr.splitlines()
+                if line.startswith("LOAD_ERROR=")
+            ),
+            "runtime probe failed",
+        )
+        sys.exit(
+            f"error: Kokoro model or voices bundle is unusable ({KOKORO_MODEL}, "
+            f"{KOKORO_VOICES}): {detail}"
+        )
+
+
+def resolve_piper():
+    """Return a usable Piper executable and voice model or exit with specifics."""
+    configured = os.environ.get("PIPER_BIN")
+    piper = shutil.which(configured or "piper")
+    if not piper:
+        detail = f": {configured}" if configured else ""
+        sys.exit(
+            "error: no usable Piper executable found; install piper-tts or set "
+            f"PIPER_BIN to an executable{detail}"
+        )
+    voice = os.environ.get("PIPER_VOICE")
+    if not voice:
+        sys.exit("error: PIPER_VOICE is not set; point it to a Piper .onnx voice model")
+    if not os.path.isfile(voice):
+        sys.exit(f"error: PIPER_VOICE model not found: {voice}")
+    return piper, voice
+
+
+def preflight_local_voice(document):
+    """Validate the selected local engine and voices without creating output."""
+    dialogue = is_dialogue(document)
+    engine = pick_engine(dialogue=dialogue)
+    if dialogue and engine != "kokoro":
+        sys.exit("error: dialogue rough cuts require Kokoro for two local voices")
+    config = {"engine": engine}
+
+    if engine == "kokoro":
+        if dialogue:
+            try:
+                groups = build_dialogue_groups(document, "local_voice")
+            except ScriptFormatError as error:
+                sys.exit(f"error: {error}")
+            for group in groups.values():
+                validate_kokoro_voice(group["voice"])
+            config["groups"] = groups
+            selected_voices = [group["voice"] for group in groups.values()]
+        else:
+            config["voice"] = validate_kokoro_voice(
+                os.environ.get("KOKORO_VOICE", "am_michael")
+            )
+            selected_voices = [config["voice"]]
+        validate_kokoro_runtime(selected_voices)
+    else:
+        config["piper_bin"], config["piper_voice"] = resolve_piper()
+
+    return config
 
 
 def reexec_into_kokoro_venv():
@@ -250,12 +390,12 @@ def make_kokoro(voice=None, engine=None):
     return speak
 
 
-def make_piper():
-    piper = os.environ.get("PIPER_BIN") or shutil.which("piper") or sys.exit(
+def make_piper(piper=None, voice=None):
+    piper = piper or os.environ.get("PIPER_BIN") or shutil.which("piper") or sys.exit(
         "error: no local voice available.\n"
         "  best:     install Kokoro (see the docstring at the top of this file)\n"
         "  fallback: pip install piper-tts and set PIPER_BIN + PIPER_VOICE")
-    voice = os.environ.get("PIPER_VOICE") or sys.exit(
+    voice = voice or os.environ.get("PIPER_VOICE") or sys.exit(
         "error: set PIPER_VOICE=/path/to/voice.onnx")
 
     def speak(text, wav):
@@ -266,12 +406,25 @@ def make_piper():
 
 
 def main():
-    if len(sys.argv) < 3:
-        sys.exit("usage: tts_local.py <script.json> <run_dir>")
-    with open(sys.argv[1]) as script_file:
+    preflight_only = len(sys.argv) > 1 and sys.argv[1] == "--preflight"
+    if preflight_only:
+        if len(sys.argv) != 3:
+            sys.exit("usage: tts_local.py --preflight <script.json>")
+        script_path = sys.argv[2]
+    else:
+        if len(sys.argv) != 3:
+            sys.exit("usage: tts_local.py <script.json> <run_dir>")
+        script_path = sys.argv[1]
+
+    with open(script_path) as script_file:
         document = json.load(script_file)
     dialogue = is_dialogue(document)
-    engine = pick_engine(dialogue=dialogue)
+    config = preflight_local_voice(document)
+    engine = config["engine"]
+    if preflight_only:
+        print(f"LOCAL_VOICE_ENGINE={engine}")
+        return
+
     beats = document["beats"]
     run = sys.argv[2]
     os.makedirs(os.path.join(run, "audio"), exist_ok=True)
@@ -279,10 +432,7 @@ def main():
     if dialogue:
         if engine != "kokoro":
             sys.exit("error: dialogue rough cuts require Kokoro for two local voices")
-        try:
-            groups = build_dialogue_groups(document, "local_voice")
-        except ScriptFormatError as error:
-            sys.exit(f"error: {error}")
+        groups = config["groups"]
         tracks = {}
         source_paths = {}
         kokoro_engine = load_kokoro_engine()
@@ -301,7 +451,11 @@ def main():
                 source_paths, segments, os.path.join(run, "audio", "vo.mp3")
             )
     else:
-        speak = make_kokoro() if engine == "kokoro" else make_piper()
+        speak = (
+            make_kokoro(config["voice"])
+            if engine == "kokoro"
+            else make_piper(config["piper_bin"], config["piper_voice"])
+        )
         text, spans = build_transcript(beats)
         with tempfile.TemporaryDirectory() as tmp:
             wav = os.path.join(tmp, "vo.wav")
