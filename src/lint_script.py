@@ -37,6 +37,16 @@ THRESHOLDS = {
     "short_sentence_percent": Threshold("sentences with at most 6 words", "maximum", 25.0),
 }
 
+# A vertical reel is too short to require the long-form envelope above: demanding a
+# thirty-word sentence from a roughly thirty-second script would distort the format.
+# It still needs audible contrast, so this profile requires both a compact line and a
+# longer line, plus enough variation between sentence lengths to avoid a card-by-card
+# cadence. Writing, dialogue, and visual rules remain unchanged.
+SHORT_REEL_MEAN_WORDS = 6.0
+SHORT_REEL_STDDEV_WORDS = 2.0
+SHORT_REEL_SHORT_SENTENCE_WORDS = 6
+SHORT_REEL_LONG_SENTENCE_WORDS = 10
+
 BANNED_TERMS = (
     "delve",
     "foster",
@@ -332,6 +342,61 @@ def rhythm_diagnostics(distribution: Distribution) -> list[Diagnostic]:
                     f"{format_metric(name, threshold.value)}",
                 )
             )
+    return diagnostics
+
+
+def short_reel_rhythm_diagnostics(distribution: Distribution) -> list[Diagnostic]:
+    if not distribution.sentence_count:
+        return [
+            Diagnostic(
+                "no-sentences",
+                "no sentences with at least three words were found",
+            )
+        ]
+
+    diagnostics = []
+    if distribution.mean_words < SHORT_REEL_MEAN_WORDS:
+        diagnostics.append(
+            Diagnostic(
+                "rhythm-mean-words",
+                f"mean sentence length is {distribution.mean_words:.2f}; below the "
+                f"short-reel minimum {SHORT_REEL_MEAN_WORDS:.2f}",
+            )
+        )
+    if distribution.stddev_words < SHORT_REEL_STDDEV_WORDS:
+        diagnostics.append(
+            Diagnostic(
+                "rhythm-stddev-words",
+                f"sentence-length standard deviation is {distribution.stddev_words:.2f}; "
+                f"below the short-reel minimum {SHORT_REEL_STDDEV_WORDS:.2f}",
+            )
+        )
+
+    compact_count = sum(
+        count <= SHORT_REEL_SHORT_SENTENCE_WORDS
+        for count in distribution.sentence_word_counts
+    )
+    if compact_count == 0:
+        diagnostics.append(
+            Diagnostic(
+                "rhythm-short-sentence-count",
+                "short vertical reels need at least one sentence with at most "
+                f"{SHORT_REEL_SHORT_SENTENCE_WORDS} words",
+            )
+        )
+
+    longer_count = sum(
+        count >= SHORT_REEL_LONG_SENTENCE_WORDS
+        for count in distribution.sentence_word_counts
+    )
+    if longer_count == 0:
+        diagnostics.append(
+            Diagnostic(
+                "rhythm-long-sentence-count",
+                "short vertical reels need at least one sentence with at least "
+                f"{SHORT_REEL_LONG_SENTENCE_WORDS} words",
+            )
+        )
     return diagnostics
 
 
@@ -666,6 +731,38 @@ def print_report(path: Path, mode: str, distribution: Distribution) -> None:
     )
 
 
+def print_short_reel_report(
+    path: Path, mode: str, distribution: Distribution
+) -> None:
+    compact_count = sum(
+        count <= SHORT_REEL_SHORT_SENTENCE_WORDS
+        for count in distribution.sentence_word_counts
+    )
+    longer_count = sum(
+        count >= SHORT_REEL_LONG_SENTENCE_WORDS
+        for count in distribution.sentence_word_counts
+    )
+    print(f"Lint report: {path}")
+    print(f"Mode: {mode} (short vertical reel rhythm)")
+    print(f"Sentences analyzed: {distribution.sentence_count}")
+    print(
+        f"Mean sentence length: {distribution.mean_words:.2f} words "
+        f"(minimum {SHORT_REEL_MEAN_WORDS:.2f})"
+    )
+    print(
+        f"Sentence-length standard deviation: {distribution.stddev_words:.2f} "
+        f"(minimum {SHORT_REEL_STDDEV_WORDS:.2f})"
+    )
+    print(
+        f"Sentences with at most {SHORT_REEL_SHORT_SENTENCE_WORDS} words: "
+        f"{compact_count}/{distribution.sentence_count} (minimum 1)"
+    )
+    print(
+        f"Sentences with at least {SHORT_REEL_LONG_SENTENCE_WORDS} words: "
+        f"{longer_count}/{distribution.sentence_count} (minimum 1)"
+    )
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Lint a prose narration script or scenes.json before storyboard."
@@ -675,8 +772,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="measure a Markdown document's rhythm without narration-only rules",
     )
+    parser.add_argument(
+        "--short-reel",
+        action="store_true",
+        help="apply the compact rhythm profile used by the one-command vertical reel",
+    )
     parser.add_argument("script", type=Path)
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    if args.calibration and args.short_reel:
+        parser.error("--calibration and --short-reel cannot be combined")
+    return args
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -688,14 +793,21 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     distribution = analyze_distribution(narration.text)
-    diagnostics = rhythm_diagnostics(distribution)
+    diagnostics = (
+        short_reel_rhythm_diagnostics(distribution)
+        if args.short_reel
+        else rhythm_diagnostics(distribution)
+    )
     if narration.enforce_writing_rules:
         diagnostics.extend(writing_diagnostics(narration))
     if narration.dialogue:
         diagnostics.extend(dialogue_diagnostics(narration))
     diagnostics.extend(duplicate_visual_diagnostics(narration.shows))
 
-    print_report(args.script, narration.mode, distribution)
+    if args.short_reel:
+        print_short_reel_report(args.script, narration.mode, distribution)
+    else:
+        print_report(args.script, narration.mode, distribution)
     if diagnostics:
         print(f"\nLint failed with {len(diagnostics)} issue(s):")
         for diagnostic in diagnostics:

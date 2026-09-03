@@ -22,6 +22,19 @@ uniform sentence length. A longer sentence must remain easy to follow when heard
 Judge the distribution across the whole script. Issue #13 owns the numeric calibration
 for that distribution.
 
+### Short vertical reels
+
+The one-command vertical-reel path applies the same complete-script gate with
+`src/lint_script.py --short-reel`. A short reel does not have enough running time to
+support the long-form requirement for twenty- and thirty-word sentences, so its rhythm
+profile instead requires a mean of at least six words per sentence, a sentence-length
+standard deviation of at least two words, at least one sentence of six words or fewer,
+and at least one sentence of ten words or more.
+
+Those shorter rhythm thresholds do not relax the writing rules below. Banned words,
+banned patterns, spoken-form checks, dialogue checks, and duplicate-visual checks still
+fail the gate.
+
 ## Banned words
 
 Treat these as case-insensitive whole-word or whole-phrase matches. Rewrite the thought

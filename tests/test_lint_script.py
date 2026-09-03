@@ -106,6 +106,39 @@ class LintScriptTests(unittest.TestCase):
         self.assertIn("Mode: scenes.json narration", stdout)
         self.assertIn("Lint passed.", stdout)
 
+    def test_repository_vertical_reel_example_passes_short_profile(self):
+        return_code, stdout, stderr = self.call_main(
+            ROOT / "examples" / "intake.example.json", "--short-reel"
+        )
+
+        self.assertEqual(return_code, 0, stdout + stderr)
+        self.assertIn("short vertical reel rhythm", stdout)
+        self.assertIn("Lint passed.", stdout)
+
+    def test_short_profile_keeps_writing_and_spoken_form_rules(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            scenes = Path(temp_dir) / "reel.json"
+            scenes.write_text(
+                json.dumps(
+                    {
+                        "beats": [
+                            {
+                                "say": "Here's the thing. This robust plan costs $20 today.",
+                                "show": {"type": "text", "lines": ["REJECT"]},
+                            }
+                        ]
+                    }
+                )
+            )
+
+            return_code, stdout, stderr = self.call_main(scenes, "--short-reel")
+
+        self.assertEqual(return_code, 1, stdout + stderr)
+        self.assertIn("[banned-word] at beat 1", stdout)
+        self.assertIn("[throat-clearing] at beat 1", stdout)
+        self.assertIn("[written-number] at beat 1", stdout)
+        self.assertIn("[spoken-symbol] at beat 1", stdout)
+
     def test_scenes_report_writing_issues_with_beat_context(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             scenes = Path(temp_dir) / "scenes.json"
