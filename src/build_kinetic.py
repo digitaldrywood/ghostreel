@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """build_kinetic.py — turn an intake + the voiceover's timing into a kinetic HTML page.
 
-Reads:  <intake.json>  and  <run>/audio/timing.json  (per-beat audio_start/audio_end)
+Reads:  <intake.json>, <run>/audio/timing.json (per-beat audio_start/audio_end),
+        and <run>/audio/words.json when a beat has a cue
         image beats expect  <run>/assets/img_<i>.png  (if missing, a colored card is used
         so a FREE rough cut still renders)
 Writes: <run>/ad.html        (references src/kinetic.css + src/kinetic.js — clean-room)
@@ -12,7 +13,7 @@ visual is cut to the exact moment its line is spoken. No proprietary engine invo
 
 Usage: python3 src/build_kinetic.py <intake.json> <run_dir>
 """
-import json, os, sys, urllib.parse
+import json, os, sys, unicodedata, urllib.parse
 
 SRC = os.path.dirname(os.path.abspath(__file__))
 
@@ -25,12 +26,80 @@ def esc(s):
     return (str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
 
 
+def normalize_word(value):
+    normalized = unicodedata.normalize("NFKC", str(value)).casefold()
+    return "".join(
+        character
+        for character in normalized
+        if unicodedata.category(character)[0] in {"L", "N"}
+    )
+
+
+def cue_position(beat_index, cue, span):
+    cue_words = [normalize_word(word) for word in cue.split()]
+    cue_words = [word for word in cue_words if word]
+    if not cue_words:
+        raise SystemExit(f"beat {beat_index}: cue {cue!r} has no matchable words")
+
+    normalized_span = [
+        (index, normalized)
+        for index, word in enumerate(span)
+        if (normalized := normalize_word(word["w"]))
+    ]
+    span_words = [normalized for _, normalized in normalized_span]
+    width = len(cue_words)
+    matches = [
+        index
+        for index in range(len(span_words) - width + 1)
+        if span_words[index:index + width] == cue_words
+    ]
+    if not matches:
+        raise SystemExit(
+            f"beat {beat_index}: cue {cue!r} was not found in its aligned word span"
+        )
+    if len(matches) > 1:
+        offsets = ", ".join(str(normalized_span[index][0]) for index in matches)
+        raise SystemExit(
+            f"beat {beat_index}: cue {cue!r} is ambiguous in its aligned word span "
+            f"(matches at word offsets {offsets})"
+        )
+    word_offset = normalized_span[matches[0]][0]
+    return word_offset, span[word_offset]["start"]
+
+
+def cue_starts(beats, run):
+    if not any(beat.get("cue") for beat in beats):
+        return {}
+
+    words = json.load(open(os.path.join(run, "audio", "words.json")))
+    starts = {}
+    word_index = 0
+    for beat_index, beat in enumerate(beats):
+        word_count = len(beat["say"].split())
+        span = words[word_index:word_index + word_count]
+        cue = beat.get("cue")
+        if cue:
+            cue_offset, start = cue_position(beat_index, cue, span)
+            if beat_index == 0:
+                if cue_offset:
+                    raise SystemExit(
+                        f"beat 0: cue {cue!r} starts at word offset {cue_offset} and "
+                        "leaves the opening audio without a visual; move or remove the cue "
+                        "so the first visual starts at zero"
+                    )
+                start = 0.0
+            starts[beat_index] = start
+        word_index += word_count
+    return starts
+
+
 def main():
     intake = json.load(open(sys.argv[1]))
     run = sys.argv[2]
     timing = json.load(open(os.path.join(run, "audio", "timing.json")))
     beats = intake["beats"]
     tb = timing["beats"]
+    starts = cue_starts(beats, run)
 
     style = intake.get("style", {})
     bg = style.get("bg", "radial-gradient(120% 80% at 50% 16%,#16224e 0%,#0a1230 45%,#05070f 100%)")
@@ -48,7 +117,7 @@ def main():
         sid = f"s{i}"
         a0 = tb[i]["audio_start"] if i < len(tb) else 0.0
         a1 = tb[i]["audio_end"] if i < len(tb) else a0 + 2.0
-        start = 0 if i == 0 else int(round(a0 * 1000))
+        start = 0 if i == 0 else int(round(starts.get(i, a0) * 1000))
         end_ms = a1 * 1000
         show = b.get("show", {})
         typ = show.get("type", "text")
