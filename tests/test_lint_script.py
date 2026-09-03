@@ -169,6 +169,30 @@ class LintScriptTests(unittest.TestCase):
         self.assertEqual(long_code, 2)
         self.assertIn("beat 1 must contain a show object", long_stderr)
 
+    def test_short_profile_rejects_explicit_null_show(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            scenes = Path(temp_dir) / "reel.json"
+            scenes.write_text(
+                json.dumps(
+                    {
+                        "beats": [
+                            {
+                                "say": (
+                                    "Start with one clear idea. Then connect each scene to "
+                                    "the sentence that gives it meaning."
+                                ),
+                                "show": None,
+                            }
+                        ]
+                    }
+                )
+            )
+
+            return_code, _, stderr = self.call_main(scenes, "--short-reel")
+
+        self.assertEqual(return_code, 2)
+        self.assertIn("beat 1 must contain a show object", stderr)
+
     def test_short_profile_keeps_writing_and_spoken_form_rules(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             scenes = Path(temp_dir) / "reel.json"

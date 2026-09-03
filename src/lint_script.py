@@ -502,11 +502,12 @@ def load_scenes(
         say = beat.get("say")
         if not isinstance(say, str) or not say.strip():
             raise InputError(f"{path}: beat {index} must contain a non-empty say string")
-        show = beat.get("show")
-        if show is None and allow_missing_show:
+        if "show" not in beat and allow_missing_show:
             show = None
-        elif not isinstance(show, dict):
-            raise InputError(f"{path}: beat {index} must contain a show object")
+        else:
+            show = beat.get("show")
+            if not isinstance(show, dict):
+                raise InputError(f"{path}: beat {index} must contain a show object")
         speaker = beat.get("speaker") if dialogue else None
         label = f"beat {index}" + (f" [{speaker}]" if speaker else "")
         segments.append(Segment(label, say.strip()))
