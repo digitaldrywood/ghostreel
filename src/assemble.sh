@@ -8,10 +8,10 @@
 #   out/audio/words.json  word-level timings                  (src/tts.py)
 #   out/render/NN.png     a still rendered visual, 0-indexed       (your render step)
 #   out/render/NN.mp4     or a moving render; provide one or the other per beat
-#   out/music.mp3         optional instrumental bed
 #
-# Writes out/final.mp4. ffmpeg does all the work; the only clever part is computing each
-# visual's on-screen window from the word timings so the cut lands on the right word.
+# Writes the voice-only out/final.mp4 consumed by the later music stage. ffmpeg does all
+# the work; the only clever part is computing each visual's on-screen window from the
+# word timings so the cut lands on the right word.
 set -euo pipefail
 
 SCENES="${1:?usage: assemble.sh scenes.json out/}"
@@ -148,19 +148,12 @@ while read -r idx start dur; do
   SEGS+=("$seg")
 done < "$OUT/windows.txt"
 
-# --- concat the visuals, then mux the (mono) voice and optional music -------------
+# --- concat the visuals, then mux the mono voice ---------------------------------
 : > "$OUT/concat.txt"
 for s in "${SEGS[@]}"; do echo "file '$(realpath "$s")'" >> "$OUT/concat.txt"; done
 ffmpeg -y -loglevel error -f concat -safe 0 -i "$OUT/concat.txt" -c copy "$OUT/visual.mp4"
 
-if [ -f "$OUT/music.mp3" ]; then
-  # voice at full, music ducked under it; everything forced to mono so nothing garbles
-  ffmpeg -y -loglevel error -i "$OUT/visual.mp4" -i "$OUT/audio/vo.mp3" -stream_loop -1 -i "$OUT/music.mp3" \
-    -filter_complex "[1:a]aformat=channel_layouts=mono[v];[2:a]aformat=channel_layouts=mono,volume=0.10[m];[v][m]amix=inputs=2:duration=first[a]" \
-    -map 0:v -map "[a]" -c:v copy -c:a aac -ac 1 -shortest -movflags +faststart "$OUT/final.mp4"
-else
-  ffmpeg -y -loglevel error -i "$OUT/visual.mp4" -i "$OUT/audio/vo.mp3" \
-    -map 0:v -map 1:a -c:v copy -c:a aac -ac 1 -shortest -movflags +faststart "$OUT/final.mp4"
-fi
+ffmpeg -y -loglevel error -i "$OUT/visual.mp4" -i "$OUT/audio/vo.mp3" \
+  -map 0:v -map 1:a -c:v copy -c:a aac -ac 1 -shortest -movflags +faststart "$OUT/final.mp4"
 
 echo "wrote $OUT/final.mp4"

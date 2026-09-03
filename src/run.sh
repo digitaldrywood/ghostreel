@@ -67,7 +67,9 @@ echo "==> 6. sync       — cut each visual to its cue word and enforce minimum 
 echo "==> 7. assemble   — frame-snap the visuals and mux the mono voice track"
 echo "      bash src/assemble.sh $SCENES $OUT"
 
-echo "==> 8. music      — drop an instrumental bed at $OUT/music.mp3  [Lyria/ElevenLabs: pennies]"
+echo "==> 8. music      — generate or reuse a low instrumental bed, then mix it into the final"
+echo "                    [Lyria/ElevenLabs: pennies]"
+echo "      bash src/music.sh $SCENES $OUT"
 echo "==> 9. caption    — generate a word-timed .srt from $OUT/audio/words.json"
 
 echo
