@@ -37,6 +37,12 @@ done
 INTAKE="${ARGS[0]:-examples/intake.example.json}"
 [ -f "$INTAKE" ] || { echo "no intake file: $INTAKE"; exit 1; }
 
+# Gate the complete narration before credentials, dependency setup, output replacement,
+# or any free/paid generator. Short reels keep the full writing gate but use a compact
+# rhythm profile suited to their running time.
+echo "== narration lint (short vertical reel) =="
+python3 src/lint_script.py --short-reel "$INTAKE"
+
 # keys: prefer the environment (direnv); fall back to sourcing ./.envrc for non-direnv users
 if [ -z "${ELEVENLABS_API_KEY:-}" ] && [ -f .envrc ]; then set -a; . ./.envrc; set +a; fi
 

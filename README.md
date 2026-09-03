@@ -204,6 +204,12 @@ direnv allow                 # (or, without direnv:  set -a; source .envrc; set 
 ./ghostreel.sh examples/intake.example.json
 ```
 
+Both commands first run the complete narration through the short-reel lint profile. A
+failure prints actionable rhythm or writing diagnostics and exits before replacing the
+existing `out/<title>` directory or invoking voice, image, or music generation. Run the
+same gate directly with
+`python3 src/lint_script.py --short-reel examples/intake.example.json`.
+
 ### The free local voice (Kokoro)
 
 The rough cut uses **Kokoro-82M** via `kokoro-onnx` — near-human, ~5x realtime on CPU,

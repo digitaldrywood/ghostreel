@@ -18,11 +18,25 @@ class GhostreelCliTests(unittest.TestCase):
         shutil.copy2(ROOT / "ghostreel.sh", self.project / "ghostreel.sh")
         (self.project / "examples").mkdir()
         (self.project / "examples" / "intake.json").write_text(
-            json.dumps({"title": "Test Short", "beats": [{"say": "Hello."}]}),
+            json.dumps(
+                {
+                    "title": "Test Short",
+                    "beats": [
+                        {
+                            "say": (
+                                "Start with one clear idea. Then connect each scene to "
+                                "the sentence that gives it meaning."
+                            )
+                        }
+                    ],
+                }
+            ),
             encoding="utf-8",
         )
         (self.project / "node_modules" / "playwright").mkdir(parents=True)
         (self.project / "src").mkdir()
+        for module in ("lint_script.py", "prose_script.py", "tts_common.py"):
+            shutil.copy2(ROOT / "src" / module, self.project / "src" / module)
         self._write_pipeline_stubs()
         self.env = os.environ.copy()
         self.env.pop("ELEVENLABS_API_KEY", None)

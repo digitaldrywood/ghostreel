@@ -37,6 +37,9 @@ jobs:
             python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$f"
           done
 
+      - name: Advertised vertical reel passes narration gate
+        run: python3 src/lint_script.py --short-reel examples/intake.example.json
+
       - name: Tests
         run: |
           if [ -d tests ]; then

@@ -106,6 +106,117 @@ class LintScriptTests(unittest.TestCase):
         self.assertIn("Mode: scenes.json narration", stdout)
         self.assertIn("Lint passed.", stdout)
 
+    def test_repository_vertical_reel_example_passes_short_profile(self):
+        return_code, stdout, stderr = self.call_main(
+            ROOT / "examples" / "intake.example.json", "--short-reel"
+        )
+
+        self.assertEqual(return_code, 0, stdout + stderr)
+        self.assertIn("short vertical reel rhythm", stdout)
+        self.assertIn("minimum 5.50", stdout)
+        self.assertIn("Lint passed.", stdout)
+
+    def test_short_profile_counts_two_word_punch_line(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            scenes = Path(temp_dir) / "reel.json"
+            scenes.write_text(
+                json.dumps(
+                    {
+                        "beats": [
+                            {
+                                "say": (
+                                    "Go now. Keep the entire message connected while each "
+                                    "clear scene supports the listener."
+                                ),
+                                "show": {"type": "text", "lines": ["GO NOW"]},
+                            }
+                        ]
+                    }
+                )
+            )
+
+            return_code, stdout, stderr = self.call_main(scenes, "--short-reel")
+
+        self.assertEqual(return_code, 0, stdout + stderr)
+        self.assertIn("Sentences with at most 6 words: 1/2", stdout)
+        self.assertIn("Lint passed.", stdout)
+
+    def test_short_profile_allows_missing_show_but_long_form_rejects_it(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            scenes = Path(temp_dir) / "reel.json"
+            scenes.write_text(
+                json.dumps(
+                    {
+                        "beats": [
+                            {
+                                "say": (
+                                    "Start with one clear idea. Then connect each scene to "
+                                    "the sentence that gives it meaning."
+                                )
+                            }
+                        ]
+                    }
+                )
+            )
+
+            short_code, short_stdout, short_stderr = self.call_main(
+                scenes, "--short-reel"
+            )
+            long_code, _, long_stderr = self.call_main(scenes)
+
+        self.assertEqual(short_code, 0, short_stdout + short_stderr)
+        self.assertIn("Lint passed.", short_stdout)
+        self.assertEqual(long_code, 2)
+        self.assertIn("beat 1 must contain a show object", long_stderr)
+
+    def test_short_profile_rejects_explicit_null_show(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            scenes = Path(temp_dir) / "reel.json"
+            scenes.write_text(
+                json.dumps(
+                    {
+                        "beats": [
+                            {
+                                "say": (
+                                    "Start with one clear idea. Then connect each scene to "
+                                    "the sentence that gives it meaning."
+                                ),
+                                "show": None,
+                            }
+                        ]
+                    }
+                )
+            )
+
+            return_code, _, stderr = self.call_main(scenes, "--short-reel")
+
+        self.assertEqual(return_code, 2)
+        self.assertIn("beat 1 must contain a show object", stderr)
+
+    def test_short_profile_keeps_writing_and_spoken_form_rules(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            scenes = Path(temp_dir) / "reel.json"
+            scenes.write_text(
+                json.dumps(
+                    {
+                        "beats": [
+                            {
+                                "say": "Here's the thing. This robust plan costs $20 today.",
+                                "show": {"type": "text", "lines": ["REJECT"]},
+                            }
+                        ]
+                    }
+                )
+            )
+
+            return_code, stdout, stderr = self.call_main(scenes, "--short-reel")
+
+        self.assertEqual(return_code, 1, stdout + stderr)
+        self.assertIn("[banned-word] at beat 1", stdout)
+        self.assertIn("[throat-clearing] at beat 1", stdout)
+        self.assertIn("[written-number] at beat 1", stdout)
+        self.assertIn("[spoken-symbol] at beat 1", stdout)
+
     def test_scenes_report_writing_issues_with_beat_context(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             scenes = Path(temp_dir) / "scenes.json"
