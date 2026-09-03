@@ -125,6 +125,49 @@ class LocalTtsTests(unittest.TestCase):
                     with self.assertRaisesRegex(SystemExit, "unknown Kokoro voice"):
                         tts_local.make_kokoro()
 
+    def test_kokoro_preflight_rejects_a_bundle_missing_the_selected_voice(self):
+        completed = mock.Mock(
+            returncode=2,
+            stdout="MISSING_VOICES=af_heart\n",
+            stderr="",
+        )
+        with mock.patch.object(tts_local.os, "access", return_value=True):
+            with mock.patch.object(tts_local.subprocess, "run", return_value=completed) as run:
+                with self.assertRaisesRegex(SystemExit, "voices-v1.0.bin.*af_heart"):
+                    tts_local.validate_kokoro_runtime(["af_heart"])
+
+        command = run.call_args.args[0]
+        self.assertEqual(tts_local.KOKORO_PY, command[0])
+        self.assertEqual(
+            [tts_local.KOKORO_MODEL, tts_local.KOKORO_VOICES, "af_heart"],
+            command[-3:],
+        )
+
+    def test_kokoro_preflight_names_an_unusable_model_and_bundle(self):
+        completed = mock.Mock(
+            returncode=1,
+            stdout="",
+            stderr="LOAD_ERROR=ValueError: invalid model\n",
+        )
+        with mock.patch.object(tts_local.os, "access", return_value=True):
+            with mock.patch.object(tts_local.subprocess, "run", return_value=completed):
+                with self.assertRaisesRegex(
+                    SystemExit,
+                    "kokoro-v1.0.onnx.*voices-v1.0.bin.*invalid model",
+                ):
+                    tts_local.validate_kokoro_runtime(["af_heart"])
+
+    def test_kokoro_preflight_names_a_missing_runtime_dependency(self):
+        completed = mock.Mock(
+            returncode=3,
+            stdout="",
+            stderr="IMPORT_ERROR=ModuleNotFoundError: missing soundfile\n",
+        )
+        with mock.patch.object(tts_local.os, "access", return_value=True):
+            with mock.patch.object(tts_local.subprocess, "run", return_value=completed):
+                with self.assertRaisesRegex(SystemExit, "dependencies.*soundfile"):
+                    tts_local.validate_kokoro_runtime(["af_heart"])
+
     def test_pick_engine_requires_every_kokoro_artifact(self):
         required = (
             tts_local.KOKORO_PY,
@@ -135,7 +178,7 @@ class LocalTtsTests(unittest.TestCase):
             with self.subTest(missing=missing):
                 with mock.patch.dict(os.environ, {"SCRATCH_ENGINE": "kokoro"}):
                     with mock.patch.object(
-                        tts_local.os.path, "exists", side_effect=lambda path: path != missing
+                        tts_local.os.path, "isfile", side_effect=lambda path: path != missing
                     ):
                         with contextlib.redirect_stderr(io.StringIO()) as stderr:
                             self.assertEqual("piper", tts_local.pick_engine())
@@ -143,7 +186,7 @@ class LocalTtsTests(unittest.TestCase):
                 self.assertIn("falling back to piper", stderr.getvalue())
 
         with mock.patch.dict(os.environ, {"SCRATCH_ENGINE": "kokoro"}):
-            with mock.patch.object(tts_local.os.path, "exists", return_value=True):
+            with mock.patch.object(tts_local.os.path, "isfile", return_value=True):
                 self.assertEqual("kokoro", tts_local.pick_engine())
 
     def test_missing_kokoro_artifacts_never_construct_the_narrator_engine(self):
@@ -173,14 +216,19 @@ class LocalTtsTests(unittest.TestCase):
                             ):
                                 with mock.patch.object(tts_local, "make_kokoro") as kokoro:
                                     with mock.patch.object(
-                                        tts_local, "make_piper", return_value=speak
+                                        tts_local,
+                                        "resolve_piper",
+                                        return_value=("/usr/bin/piper", "/voices/test.onnx"),
                                     ):
-                                        with mock.patch.object(tts_local, "shape_pauses"):
-                                            with mock.patch.object(tts_local, "dur", return_value=1.0):
-                                                with mock.patch.object(tts_local.subprocess, "run"):
-                                                    with contextlib.redirect_stdout(io.StringIO()):
-                                                        with contextlib.redirect_stderr(io.StringIO()):
-                                                            tts_local.main()
+                                        with mock.patch.object(
+                                            tts_local, "make_piper", return_value=speak
+                                        ):
+                                            with mock.patch.object(tts_local, "shape_pauses"):
+                                                with mock.patch.object(tts_local, "dur", return_value=1.0):
+                                                    with mock.patch.object(tts_local.subprocess, "run"):
+                                                        with contextlib.redirect_stdout(io.StringIO()):
+                                                            with contextlib.redirect_stderr(io.StringIO()):
+                                                                tts_local.main()
                     kokoro.assert_not_called()
 
     def test_missing_kokoro_artifacts_stop_dialogue_before_engine_construction(self):
@@ -259,7 +307,11 @@ class LocalTtsTests(unittest.TestCase):
                 Path(wav).write_bytes(b"wav")
 
             with mock.patch.object(sys, "argv", ["tts_local.py", str(intake), str(output)]):
-                with mock.patch.object(tts_local, "pick_engine", return_value="kokoro"):
+                with mock.patch.object(
+                    tts_local,
+                    "preflight_local_voice",
+                    return_value={"engine": "kokoro", "voice": "am_michael"},
+                ):
                     with mock.patch.object(tts_local, "make_kokoro", return_value=speak):
                         with mock.patch.object(tts_local, "shape_pauses") as shape_pauses:
                             with mock.patch.object(tts_local, "dur", return_value=2.0):
@@ -306,8 +358,15 @@ class LocalTtsTests(unittest.TestCase):
                     Path(wav).write_bytes(b"wav")
                 return speak
 
+            groups = tts_local.build_dialogue_groups(
+                json.loads(intake.read_text(encoding="utf-8")), "local_voice"
+            )
             with mock.patch.object(sys, "argv", ["tts_local.py", str(intake), str(output)]):
-                with mock.patch.object(tts_local, "pick_engine", return_value="kokoro"):
+                with mock.patch.object(
+                    tts_local,
+                    "preflight_local_voice",
+                    return_value={"engine": "kokoro", "groups": groups},
+                ):
                     with mock.patch.object(tts_local, "load_kokoro_engine", return_value=mock.Mock()):
                         with mock.patch.object(tts_local, "make_kokoro", side_effect=make_speaker):
                             with mock.patch.object(tts_local, "shape_pauses"):

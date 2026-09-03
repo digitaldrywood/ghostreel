@@ -61,6 +61,11 @@ export NODE_PATH="$HERE/node_modules"
 if [ "$ROUGH" = 0 ]; then
   : "${ELEVENLABS_API_KEY:?set ELEVENLABS_API_KEY (cp .envrc.example .envrc, fill it, direnv allow)}"
   : "${OPENAI_API_KEY:?set OPENAI_API_KEY (cp .envrc.example .envrc, fill it, direnv allow)}"
+else
+  # Select and validate the local engine before replacing a reviewable rough cut.
+  # tts_local.py owns this logic so preflight and synthesis cannot drift apart.
+  echo "== local voice preflight =="
+  python3 src/tts_local.py --preflight "$INTAKE"
 fi
 
 SLUG="$(python3 -c "import json,re,sys;t=json.load(open(sys.argv[1])).get('title','short');print(re.sub(r'[^a-z0-9]+','-',t.lower()).strip('-') or 'short')" "$INTAKE")"
