@@ -233,3 +233,16 @@ budget:
   enabled: false
 hooks:
   timeout_ms: 60000
+
+agents:
+    model_selection:
+        preset: sol_first
+        normal_model: gpt-6-astra
+        complex_model: gpt-6-astra
+        levels:
+            normal:
+                effort: low
+            complex:
+                effort: medium
+            very_complex:
+                effort: high
