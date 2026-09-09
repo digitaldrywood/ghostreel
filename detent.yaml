@@ -243,6 +243,6 @@ agents:
             normal:
                 effort: low
             complex:
-                effort: medium
+                effort: low
             very_complex:
-                effort: high
+                effort: low
