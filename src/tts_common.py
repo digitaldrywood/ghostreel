@@ -224,7 +224,9 @@ def interleave_dialogue(
     by_beat: dict[int, dict[str, Any]] = {}
     for speaker, group in groups.items():
         track = tracks[speaker]
-        windows = turn_windows(track["turns"], track["duration"])
+        windows = track.get("windows")
+        if windows is None:
+            windows = turn_windows(track["turns"], track["duration"])
         for local_index, (beat_index, span, window) in enumerate(
             zip(group["beat_indices"], group["spans"], windows)
         ):

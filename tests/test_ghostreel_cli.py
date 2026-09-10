@@ -113,7 +113,7 @@ class GhostreelCliTests(unittest.TestCase):
         )
 
     def _install_real_local_tts(self):
-        for module in ("tts_local.py", "voices.py"):
+        for module in ("tts_local.py", "voices.py", "local_alignment.py"):
             shutil.copy2(ROOT / "src" / module, self.project / "src" / module)
 
     def _existing_run(self):
