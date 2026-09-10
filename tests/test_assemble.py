@@ -41,8 +41,8 @@ class AssembleTests(unittest.TestCase):
             (audio / "words.json").write_text(
                 json.dumps(
                     [
-                        {"w": "Alpha", "start": 0.0, "end": 4.0},
-                        {"w": "Beta", "start": 4.0, "end": 8.0},
+                        {"w": "Alpha", "start": 0.0, "end": 4.01},
+                        {"w": "Beta", "start": 4.01, "end": 8.02},
                     ]
                 )
             )
@@ -98,7 +98,7 @@ class AssembleTests(unittest.TestCase):
                     "-i",
                     "anullsrc=channel_layout=mono:sample_rate=44100",
                     "-t",
-                    "8",
+                    "8.02",
                     "-c:a",
                     "libmp3lame",
                     str(audio / "vo.mp3"),
@@ -134,6 +134,7 @@ class AssembleTests(unittest.TestCase):
                 self.assertEqual((video["width"], video["height"]), (1920, 1080))
                 self.assertEqual(video["pix_fmt"], "yuv420p")
                 self.assertEqual(video["avg_frame_rate"], "30/1")
+                self.assertEqual(int(video["nb_frames"]), [120, 121][index])
                 self.assertAlmostEqual(float(probe["format"]["duration"]), 4.0, delta=0.04)
 
             final_probe = json.loads(
@@ -155,6 +156,10 @@ class AssembleTests(unittest.TestCase):
             ]
             self.assertEqual(len(audio_streams), 1)
             self.assertEqual(audio_streams[0]["channels"], 1)
+            self.assertGreaterEqual(float(audio_streams[0]["duration"]), 8.02)
+            video = next(s for s in final_probe["streams"] if s["codec_type"] == "video")
+            self.assertEqual(int(video["nb_frames"]), 241)
+            self.assertGreaterEqual(float(video["duration"]), 8.02)
 
     def test_missing_visual_lists_both_accepted_assets(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -222,6 +227,22 @@ class AssembleTests(unittest.TestCase):
             windows = windows_path.read_text().splitlines() if windows_path.exists() else []
             return result, windows
 
+    def test_many_fractional_windows_do_not_accumulate_drift(self):
+        count = 100
+        scenes = [{"say": "Alpha", "show": {"type": "image"}} for _ in range(count)]
+        words = [{"w": "Alpha", "start": i * 4.01, "end": (i + 1) * 4.01}
+                 for i in range(count)]
+        result, windows = self.run_assemble(scenes, words)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        elapsed_frames = 0
+        for index, window in enumerate(windows):
+            _, _, _, frames = window.split()
+            self.assertLessEqual(abs(elapsed_frames / 30 - words[index]["start"]), 1 / 30)
+            self.assertGreaterEqual(int(frames), 120)
+            elapsed_frames += int(frames)
+        self.assertGreaterEqual(elapsed_frames / 30, words[-1]["end"])
+        self.assertLess(elapsed_frames / 30 - words[-1]["end"], 1 / 30)
+
     def test_full_cue_phrase_chooses_the_complete_sequence(self):
         scenes = [
             {
@@ -257,7 +278,7 @@ class AssembleTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(
             windows,
-            ["0 0.000 9.000", "1 9.000 5.000", "2 14.000 4.000"],
+            ["0 0.000 9.000 270", "1 9.000 5.000 150", "2 14.000 4.000 120"],
         )
 
     def test_diagram_and_still_minimum_dwell_are_accepted(self):
@@ -281,7 +302,7 @@ class AssembleTests(unittest.TestCase):
         result, windows = self.run_assemble(scenes, words)
 
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(windows, ["0 0.000 5.000", "1 5.000 4.000"])
+        self.assertEqual(windows, ["0 0.000 5.000 150", "1 5.000 4.000 120"])
 
     def test_opening_silence_is_covered_from_zero(self):
         scenes = [
@@ -304,7 +325,7 @@ class AssembleTests(unittest.TestCase):
         result, windows = self.run_assemble(scenes, words)
 
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(windows, ["0 0.000 5.000", "1 5.000 4.000"])
+        self.assertEqual(windows, ["0 0.000 5.000 150", "1 5.000 4.000 120"])
 
     def test_internal_first_beat_cue_rejects_uncovered_audio(self):
         scenes = [
@@ -343,7 +364,7 @@ class AssembleTests(unittest.TestCase):
         result, windows = self.run_assemble(scenes, words)
 
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(windows, ["0 0.000 4.000"])
+        self.assertEqual(windows, ["0 0.000 4.000 120"])
 
     def test_unsatisfiable_diagram_and_still_dwell_report_the_beat(self):
         cases = (("diagram", 4.5, "5.000"), ("image", 3.5, "4.000"))

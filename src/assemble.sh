@@ -27,9 +27,10 @@ mkdir -p "$OUT/seg"
 # Walk words.json in order, assigning N words to each beat (N = words in that beat's say).
 # A beat starts at its complete cue phrase if given, else its first word. It holds until
 # the next beat starts, provided that leaves five seconds for a diagram or four seconds
-# for any other still. Output: "index start duration" lines.
+# for any other still. Output: "index start duration frames" lines.
 python3 - "$SCENES" "$OUT/audio/words.json" > "$OUT/windows.txt" <<'PY'
 import json
+from decimal import Decimal, ROUND_CEILING, ROUND_HALF_UP
 import sys
 import unicodedata
 
@@ -98,6 +99,13 @@ for beat_index, b in enumerate(scenes):
         start = 0.0
     starts.append(start)
     i += n
+# Snap absolute boundaries once; adjacent differences cannot accumulate drift.
+fps = 30
+boundaries = [
+    int((Decimal(str(start)) * fps).to_integral_value(rounding=ROUND_HALF_UP))
+    for start in starts
+]
+boundaries.append(int((Decimal(str(total)) * fps).to_integral_value(rounding=ROUND_CEILING)))
 for idx in range(len(scenes)):
     s = starts[idx]
     e = starts[idx + 1] if idx + 1 < len(starts) else total
@@ -119,12 +127,13 @@ for idx in range(len(scenes)):
             f"but cue timing leaves {max(0.0, duration):.3f}s before {boundary}; "
             f"{remedy}"
         )
-    print(idx, f"{s:.3f}", f"{duration:.3f}")
+    frames = boundaries[idx + 1] - boundaries[idx]
+    print(idx, f"{boundaries[idx] / fps:.3f}", f"{frames / fps:.3f}", frames)
 PY
 
 # --- build one frame-snapped segment per beat -------------------------------------
 SEGS=()
-while read -r idx start dur; do
+while read -r idx start dur frames; do
   stem="$OUT/render/$(printf '%02d' "$idx")"
   still="$stem.png"
   video="$stem.mp4"
@@ -142,7 +151,7 @@ while read -r idx start dur; do
     exit 1
   fi
   seg="$OUT/seg/$(printf '%02d' "$idx").mp4"
-  ffmpeg -nostdin -y -loglevel error "${input_args[@]}" -map 0:v:0 -t "$dur" \
+  ffmpeg -nostdin -y -loglevel error "${input_args[@]}" -map 0:v:0 -frames:v "$frames" \
     -vf "scale=${W}:${H}:force_original_aspect_ratio=decrease,pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2:${BG},setsar=1,fps=30" \
     -an -c:v libx264 -preset slow -crf 18 -pix_fmt yuv420p "$seg"
   SEGS+=("$seg")
@@ -154,6 +163,6 @@ for s in "${SEGS[@]}"; do echo "file '$(realpath "$s")'" >> "$OUT/concat.txt"; d
 ffmpeg -y -loglevel error -f concat -safe 0 -i "$OUT/concat.txt" -c copy "$OUT/visual.mp4"
 
 ffmpeg -y -loglevel error -i "$OUT/visual.mp4" -i "$OUT/audio/vo.mp3" \
-  -map 0:v -map 1:a -c:v copy -c:a aac -ac 1 -shortest -movflags +faststart "$OUT/final.mp4"
+  -map 0:v -map 1:a -c:v copy -c:a aac -ac 1 -movflags +faststart "$OUT/final.mp4"
 
 echo "wrote $OUT/final.mp4"
