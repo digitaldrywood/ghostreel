@@ -210,6 +210,10 @@ existing `out/<title>` directory or invoking voice, image, or music generation. 
 same gate directly with
 `python3 src/lint_script.py --short-reel examples/intake.example.json`.
 
+Rerunning from a saved `out/<title>/intake.json` is rejected before output cleanup,
+including when the input points there through a symlink. Copy the intake outside
+that output directory, then run the command with the copied file.
+
 ### The free local voice (Kokoro)
 
 The rough cut uses **Kokoro-82M** via `kokoro-onnx` — near-human, ~5x realtime on CPU,
