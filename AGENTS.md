@@ -127,7 +127,7 @@ orchestrator can size it:
 
 ```detent-agent
 schema: 1
-effort: medium
+effort: high
 ```
 
 `effort` must be exactly one of `low`, `medium`, `high`, `xhigh`, `max`, or
