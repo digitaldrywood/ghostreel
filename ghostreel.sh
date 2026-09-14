@@ -69,7 +69,23 @@ else
 fi
 
 SLUG="$(python3 -c "import json,re,sys;t=json.load(open(sys.argv[1])).get('title','short');print(re.sub(r'[^a-z0-9]+','-',t.lower()).strip('-') or 'short')" "$INTAKE")"
-RUN="out/$SLUG"; rm -rf "$RUN"; mkdir -p "$RUN/audio" "$RUN/assets"
+RUN="out/$SLUG"
+# Refuse saved inputs that cleanup would remove, including symlink aliases.
+# Check the directory entry as well as its target: an outbound symlink inside
+# RUN would itself disappear even when its target lives elsewhere.
+python3 - "$INTAKE" "$RUN" <<'PY'
+from pathlib import Path
+import sys
+
+intake, run = map(Path, sys.argv[1:])
+destination = run.resolve()
+entry = intake.parent.resolve() / intake.name
+if (run.absolute() in intake.absolute().parents
+        or any(destination == path or destination in path.parents
+               for path in (entry, intake.resolve()))):
+    sys.exit(f"intake is inside output directory {run}; copy it outside that directory before rerunning")
+PY
+rm -rf "$RUN"; mkdir -p "$RUN/audio" "$RUN/assets"
 cp "$INTAKE" "$RUN/intake.json"
 echo "== ghostreel: $SLUG  (rough=$ROUGH) =="
 

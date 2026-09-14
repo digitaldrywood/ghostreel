@@ -175,6 +175,76 @@ class GhostreelCliTests(unittest.TestCase):
         self.assertIn("DONE -> out/test-short/short.mp4", result.stdout)
         self.assertTrue((self.project / "out" / "test-short" / "short.mp4").is_file())
 
+    def test_saved_intake_is_rejected_without_changing_existing_output(self):
+        for location in ("direct", "nested", "file_alias", "directory_alias", "outbound_link", "outbound_directory"):
+            with self.subTest(location=location):
+                run = self.project / "out" / "test-short"
+                run.mkdir(parents=True, exist_ok=True)
+                saved = run / "intake.json"
+                saved.write_bytes((self.project / "examples" / "intake.json").read_bytes())
+                (run / "short.mp4").write_bytes(b"existing review video")
+                intake = saved
+                if location == "nested":
+                    intake = run / "nested" / "saved.json"
+                    intake.parent.mkdir()
+                    intake.write_bytes(saved.read_bytes())
+                elif location == "file_alias":
+                    intake = self.project / "alias.json"
+                    intake.symlink_to(saved)
+                elif location == "directory_alias":
+                    alias = self.project / "alias"
+                    alias.symlink_to(run, target_is_directory=True)
+                    intake = alias / "intake.json"
+                elif location == "outbound_link":
+                    intake = run / "external.json"
+                    intake.symlink_to(self.project / "examples" / "intake.json")
+                elif location == "outbound_directory":
+                    alias = run / "external"
+                    alias.symlink_to(self.project / "examples", target_is_directory=True)
+                    intake = alias / "intake.json"
+                snapshot = {
+                    path.relative_to(run): path.read_bytes()
+                    for path in run.rglob("*") if path.is_file()
+                }
+
+                result = self._run("--rough", str(intake.relative_to(self.project)))
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("intake is inside output directory", result.stderr)
+                self._assert_run_unchanged(run, snapshot)
+                shutil.rmtree(run)
+
+    def test_paid_saved_intake_is_rejected_before_generators(self):
+        self._write_executable(self.project / "bin" / "convert", "#!/bin/sh\nexit 0\n")
+        self.env.update(ELEVENLABS_API_KEY="test-placeholder", OPENAI_API_KEY="test-placeholder")
+        run, _ = self._existing_run()
+        saved = run / "intake.json"
+        saved.write_bytes((self.project / "examples" / "intake.json").read_bytes())
+        (run / "short.mp4").write_bytes(b"existing review video")
+        snapshot = {
+            path.relative_to(run): path.read_bytes()
+            for path in run.rglob("*") if path.is_file()
+        }
+
+        result = self._run(str(saved))
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("intake is inside output directory", result.stderr)
+        self._assert_run_unchanged(run, snapshot)
+
+    def test_external_intake_with_shared_directory_prefix_completes(self):
+        external = self.project / "out" / "test-short-source" / "intake.json"
+        external.parent.mkdir(parents=True)
+        external.write_bytes((self.project / "examples" / "intake.json").read_bytes())
+        alias = self.project / "external-alias.json"
+        alias.symlink_to(external)
+
+        result = self._run("--rough", str(alias))
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(external.read_bytes(),
+                         (self.project / "out" / "test-short" / "intake.json").read_bytes())
+
     def test_paid_run_requires_convert_before_replacing_output(self):
         previous = self.project / "out" / "test-short" / "keep.txt"
         previous.parent.mkdir(parents=True)
