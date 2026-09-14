@@ -361,7 +361,14 @@ class LocalTtsTests(unittest.TestCase):
             groups = tts_local.build_dialogue_groups(
                 json.loads(intake.read_text(encoding="utf-8")), "local_voice"
             )
-            with mock.patch.object(sys, "argv", ["tts_local.py", str(intake), str(output)]):
+            def aligned(_model, _wav, text, spans, duration, _silences):
+                return tts_local.approximate_track(text, spans, duration)
+
+            with mock.patch.object(tts_local, "load_aligner"), mock.patch.object(
+                tts_local, "align_audio", side_effect=aligned
+            ), mock.patch.object(tts_local, "detect_silences"), mock.patch.object(
+                sys, "argv", ["tts_local.py", str(intake), str(output)]
+            ):
                 with mock.patch.object(
                     tts_local,
                     "preflight_local_voice",

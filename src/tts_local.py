@@ -24,8 +24,8 @@ Kokoro weights are Apache-2.0 and kokoro-onnx is MIT, so both are fine to use he
 Usage: python3 src/tts_local.py --preflight <script.json>
        python3 src/tts_local.py <script.json> <run_dir>
 Writes the same files as tts.py (vo.mp3, words.json, timing.json) so the rest of the
-pipeline is identical. Word timings are approximate (spread across the continuous
-transcript) — fine for reviewing flow; the paid pass gets exact alignment.
+pipeline is identical. Narrator word timings are approximate. Dialogue requires a local audio aligner
+so estimated character timing is never used to slice speech.
 """
 import json, os, re, shutil, subprocess, sys, tempfile
 
@@ -40,6 +40,7 @@ from tts_common import (
     stitch_audio,
 )
 from voices import voice_details
+from local_alignment import align_audio, load_aligner
 
 KOKORO_DIR = os.environ.get("KOKORO_DIR", os.path.expanduser("~/.local/share/kokoro-tts"))
 KOKORO_PY = os.path.join(KOKORO_DIR, "venv/bin/python")
@@ -341,6 +342,21 @@ def preflight_local_voice(document):
             )
             selected_voices = [config["voice"]]
         validate_kokoro_runtime(selected_voices)
+        if dialogue:
+            # Run in the same interpreter used for synthesis, before the CLI
+            # replaces any existing review output.
+            probe = subprocess.run(
+                [KOKORO_PY, "-c",
+                 "import sys; sys.path.insert(0, sys.argv[1]); "
+                 "from local_alignment import load_aligner; "
+                 "from tts_common import ScriptFormatError\n"
+                 "try: load_aligner()\n"
+                 "except ScriptFormatError as error: sys.exit(str(error))",
+                 os.path.dirname(os.path.abspath(__file__))],
+                capture_output=True, text=True,
+            )
+            if probe.returncode:
+                sys.exit("error: local dialogue alignment preflight failed: " + probe.stderr.strip())
     else:
         config["piper_bin"], config["piper_voice"] = resolve_piper()
 
@@ -436,15 +452,23 @@ def main():
         tracks = {}
         source_paths = {}
         kokoro_engine = load_kokoro_engine()
+        try:
+            aligner = load_aligner()
+        except ScriptFormatError as error:
+            sys.exit(f"error: {error}")
         with tempfile.TemporaryDirectory() as tmp:
             for index, (speaker, group) in enumerate(groups.items()):
                 wav = os.path.join(tmp, f"speaker-{index}.wav")
                 make_kokoro(group["voice"], kokoro_engine)(group["text"], wav)
                 shape_pauses(wav, group["text"], group["spans"])
                 duration = dur(wav)
-                tracks[speaker] = approximate_track(
-                    group["text"], group["spans"], duration
-                )
+                try:
+                    tracks[speaker] = align_audio(
+                        aligner, wav, group["text"], group["spans"], duration,
+                        detect_silences(wav),
+                    )
+                except ScriptFormatError as error:
+                    sys.exit(f'error: speaker "{speaker}": {error}')
                 source_paths[speaker] = wav
             words, timing, segments = interleave_dialogue(beats, groups, tracks)
             stitch_audio(

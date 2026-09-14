@@ -228,6 +228,25 @@ with `KOKORO_VOICE`, default `am_michael`). No Kokoro? It falls back to **Piper*
 robotic, but fine for checking flow (`pip install piper-tts`, set `PIPER_BIN` +
 `PIPER_VOICE`).
 
+### Local dialogue alignment
+
+Local dialogue additionally requires `faster-whisper` in the Kokoro Python
+environment and a downloaded CTranslate2 Whisper model directory. Install the
+package with the Kokoro environment's `venv/bin/pip install faster-whisper`, then
+set `GHOSTREEL_ALIGN_MODEL` to that local model directory. See the
+[faster-whisper setup documentation](https://github.com/SYSTRAN/faster-whisper)
+for model preparation. Rendering never downloads an alignment model.
+
+After one continuous synthesis per speaker and pause shaping, the aligner reads
+that speaker's audio with word timestamps. Every recognized word must match the
+script in order (ignoring punctuation and case), and each turn boundary must have
+one detected quiet interval between its aligned words. Cuts land inside those
+intervals; captions use the aligned words shifted into conversation order.
+Missing models, transcript mismatches, and unsafe boundaries stop with a diagnostic
+instead of cutting at character estimates. If alignment fails, check pronunciation
+or select a more accurate local model. Narrator rough cuts retain approximate timing
+and do not require the aligner.
+
 ### Choose a Kokoro voice
 
 Kokoro includes 54 local voices across nine language variants. List every id without
