@@ -7,7 +7,7 @@
   This is the PATTERN for type-on-screen visuals: real HTML, recorded to mp4 by
   record_html.mjs. Never an AI image for text. Original/MIT — adapt freely.
 
-  It exposes window.__start() so the recorder can begin the animation on a painted frame.
+  It exposes window.__startTL() so the recorder can begin the animation on a painted frame.
   Pass words via the URL hash:  kinetic.html#NO%20CAMERA|NO%20EDITOR
 -->
 <style>
@@ -39,12 +39,18 @@
     el.textContent = w;
     stage.appendChild(el);
   });
-  // The recorder calls this on a painted frame so frame 0 is never blank.
-  window.__start = () => {
+  // The recorder calls this after fixing the trim point so the whole reveal is retained.
+  let started = false;
+  window.__startTL = () => {
+    if (started) return;
+    started = true;
     [...stage.children].forEach((el, i) => setTimeout(() => el.classList.add("in"), 150 + i * 220));
   };
-  // Also auto-start if opened directly in a browser.
-  window.addEventListener("load", () => setTimeout(() => window.__start(), 400));
+  // Direct previews auto-start. record_html.mjs sets the marker before this
+  // script runs and calls the same hook only after it establishes the trim.
+  window.addEventListener("load", () => {
+    if (!window.__GHOSTREEL_RECORDING__) setTimeout(() => window.__startTL(), 400);
+  });
 </script>
 </body>
 </html>
