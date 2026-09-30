@@ -285,7 +285,10 @@ animated HTML text cards from `record_html.mjs` and screen recordings; use PNG f
 captures, diagrams, terminal output, text cards, and B-roll. The assembler ignores audio
 inside rendered MP4s, loops or trims moving renders to the beat window, and normalizes all
 inputs to the configured frame size, thirty frames per second, and `yuv420p` before
-concatenation.
+concatenation. Absolute cue boundaries are rounded to the nearest frame, so cuts stay
+within half a frame of their cues without cumulative drift. The last boundary rounds up
+to cover the final word (less than one extra frame); muxing retains the complete mono
+voice track, including any trailing audio beyond the aligned words.
 
 HTML passed to `record_html.mjs` exposes `window.__startTL()`. The recorder sets
 `window.__GHOSTREEL_RECORDING__` before page scripts run, settles fonts and background
